@@ -3,25 +3,23 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
-# Set database to SQLite before any imports
-os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test.db"
+# Set database to SQLite with absolute path
+_TEST_DB = str(Path(__file__).resolve().parent.parent / "test.db")
+os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:////{_TEST_DB.lstrip('/')}"
 
-# Initialize database tables at import time
-from Database.connection import engine, Base
+# Import models so metadata registers all tables
+import importlib, sys
+
+# Ensure fresh reload
+for mod in list(sys.modules.keys()):
+    if "Database" in mod or "titan" in mod:
+        del sys.modules[mod]
+
+# Now import connection (will see our DATABASE_URL)
+from Database.connection import init_db
 import asyncio
 
+asyncio.run(init_db())
 
-def _init_sync():
-    """Create tables synchronously at import time."""
-    loop = asyncio.new_event_loop()
-    try:
-        async def init():
-            from Database.connection import init_db
-            await init_db()
-        loop.run_until_complete(init())
-    finally:
-        loop.close()
-
-
-_init_sync()
