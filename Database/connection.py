@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from sqlalchemy import MetaData
@@ -33,9 +34,10 @@ if _db_url.startswith("sqlite") and ":memory:" not in _db_url:
         _path = Path("/" + _raw_path)
     _path.parent.mkdir(parents=True, exist_ok=True)
 
+_is_mcp_mode = os.environ.get("TITAN_MCP_MODE") == "1"
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=settings.DEBUG,
+    echo=False if _is_mcp_mode else settings.DEBUG,
     pool_size=10,
     max_overflow=20,
 )
