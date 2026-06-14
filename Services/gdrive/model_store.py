@@ -163,3 +163,19 @@ class GDriveModelStore:
     def _ensure_folder_path(self, path: str) -> Optional[str]:
         """Ensure folder path exists, creating if needed."""
         return self._find_folder_id(path, create=True)
+
+
+async def ensure_model_from_gdrive(model_key: str) -> str | None:
+    """Check GDrive for cached model. Returns path or None.
+    Call this at the start of Kaggle notebooks to skip HF download if cached."""
+    store = GDriveModelStore()
+    path = store.ensure_model(model_key)
+    if path:
+        return str(path)
+    return None
+
+
+def upload_model_to_gdrive(model_key: str, local_path: str) -> bool:
+    """Upload a model directory to GDrive for future sessions."""
+    store = GDriveModelStore()
+    return store.upload_to_gdrive(model_key, local_path)

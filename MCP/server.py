@@ -52,6 +52,11 @@ from MCP.tools.notion_tools import (
 from MCP.tools.trend_tools import analyze_trend, analyze_competitor, store_winning_hook, evaluate_campaign_finance, decide_growth_action
 from MCP.tools.memory_tools import memory_store_hook, memory_find_similar_hooks, memory_store_product_knowledge, memory_find_similar_products
 from MCP.tools.publisher_tools import prepare_platform_content, track_campaign_metrics
+from MCP.tools.video_avatar_tools import (
+    generate_product_video,
+    generate_spokesperson_avatar,
+    generate_lora_model,
+)
 
 mcp = FastMCP(
     "TITAN AIO",
@@ -366,3 +371,21 @@ async def track_campaign_performance(campaign_id: str) -> dict:
 async def prepare_social_content(caption: str = "") -> list[dict]:
     """Format content for all social platforms."""
     return await prepare_platform_content(caption=caption)
+
+
+@mcp.tool()
+async def generate_product_video_tool(product_id: str, script_text: str, model: str = "wan-2-2") -> dict:
+    """Generate a short-form product video using AI models (Wan 2.2 / Hunyuan)."""
+    return await generate_product_video(product_id=product_id, script_text=script_text, model=model)
+
+
+@mcp.tool()
+async def generate_spokesperson_avatar_tool(name: str = "AI Spokesperson", style: str = "realistic") -> dict:
+    """Generate a consistent AI spokesperson avatar for UGC content."""
+    return await generate_spokesperson_avatar(name=name, style=style)
+
+
+@mcp.tool()
+async def generate_product_lora(product_id: str, image_urls: list[str]) -> dict:
+    """Train a product-specific LoRA model. Enforces usage-threshold policy."""
+    return await generate_lora_model(product_id=product_id, image_urls=image_urls)

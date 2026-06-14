@@ -6,7 +6,11 @@ import os
 from pathlib import Path
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Resolve project root from this file's location: titan/config.py -> project root
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -23,7 +27,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./data/titan.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:////" + (PROJECT_ROOT / "data" / "titan.db").as_posix().removeprefix("/")
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -36,10 +40,10 @@ class Settings(BaseSettings):
     S3_REGION: str = "auto"
 
     # ChromaDB
-    CHROMA_PERSIST_DIR: str = str(Path.cwd() / "data" / "chroma")
+    CHROMA_PERSIST_DIR: str = str(PROJECT_ROOT / "data" / "chroma")
 
     # Google Drive
-    GDRIVE_CREDENTIALS_FILE: str = str(Path.cwd() / "credentials" / "gdrive.json")
+    GDRIVE_CREDENTIALS_FILE: str = str(PROJECT_ROOT / "credentials" / "gdrive.json")
     GDRIVE_FOLDER_ID: str = ""
 
     # Server
@@ -77,6 +81,21 @@ class Settings(BaseSettings):
     MONGODB_PROJECT_ID: str = ""
     MONGODB_CLIENT_ID: str = ""
     MONGODB_CLIENT_SECRET: str = ""
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def resolve_database_url(cls, v: str) -> str:
+        """Resolve relative SQLite paths to absolute from PROJECT_ROOT."""
+        if not isinstance(v, str):
+            return v
+        if v.startswith("sqlite"):
+            idx = v.find(":///")
+            if idx != -1:
+                rel = v[idx + 4 :]  # path after ":///"
+                if rel.startswith("."):
+                    resolved = (PROJECT_ROOT / rel).resolve()
+                    return v[: idx + 4] + str(resolved).lstrip("/")
+        return v
 
 
 settings = Settings()

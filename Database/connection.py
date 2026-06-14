@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
-from titan.config import settings
+from titan.config import PROJECT_ROOT, settings
 
 # Use extend_existing to allow model re-imports during testing
 metadata = MetaData()
@@ -15,6 +17,21 @@ metadata = MetaData()
 class Base(DeclarativeBase):
     metadata = metadata
 
+
+# Ensure the database directory exists for file-based SQLite databases.
+# This must happen before engine creation (which would fail if the
+# directory does not exist).
+_db_url: str = settings.DATABASE_URL
+if _db_url.startswith("sqlite") and ":memory:" not in _db_url:
+    # Extract path after "://". SQLite://path, sqlite+aiosqlite://path
+    _auth_part = _db_url.split("://", 1)[1] if "://" in _db_url else _db_url
+    # If auth part starts with /, it's absolute. Strip leading / for path
+    _raw_path = _auth_part.lstrip("/")
+    _path = Path(_raw_path)
+    # If it was absolute (had leading /), restore it
+    if _auth_part.startswith("/"):
+        _path = Path("/" + _raw_path)
+    _path.parent.mkdir(parents=True, exist_ok=True)
 
 engine = create_async_engine(
     settings.DATABASE_URL,
