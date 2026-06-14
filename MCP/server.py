@@ -57,6 +57,13 @@ from MCP.tools.video_avatar_tools import (
     generate_spokesperson_avatar,
     generate_lora_model,
 )
+from MCP.tools.dashboard_tools import (
+    dashboard_push_campaign,
+    dashboard_push_knowledge,
+    dashboard_list_active_campaigns,
+    dashboard_list_pending_tasks,
+    dashboard_query_knowledge,
+)
 
 mcp = FastMCP(
     "TITAN AIO",
@@ -389,3 +396,33 @@ async def generate_spokesperson_avatar_tool(name: str = "AI Spokesperson", style
 async def generate_product_lora(product_id: str, image_urls: list[str]) -> dict:
     """Train a product-specific LoRA model. Enforces usage-threshold policy."""
     return await generate_lora_model(product_id=product_id, image_urls=image_urls)
+
+
+@mcp.tool()
+async def dashboard_push_campaign_result(product_id: str, title: str, price: float, campaign_id: str = "", url: str = "") -> dict:
+    """Push a campaign result to the Notion dashboard."""
+    return await dashboard_push_campaign(product_id=product_id, title=title, price=price, campaign_id=campaign_id, url=url)
+
+
+@mcp.tool()
+async def dashboard_save_knowledge(category: str, pattern: str, confidence: float = 0.5, advice: str = "") -> dict:
+    """Save a knowledge/insight entry to the Notion dashboard knowledge base."""
+    return await dashboard_push_knowledge(category=category, pattern=pattern, confidence=confidence, advice=advice)
+
+
+@mcp.tool()
+async def dashboard_get_active_campaigns(limit: int = 10) -> list[dict]:
+    """Get active campaigns from your Notion dashboard."""
+    return await dashboard_list_active_campaigns(limit=limit)
+
+
+@mcp.tool()
+async def dashboard_get_pending_tasks(limit: int = 10) -> list[dict]:
+    """Get pending tasks from your Notion dashboard."""
+    return await dashboard_list_pending_tasks(limit=limit)
+
+
+@mcp.tool()
+async def dashboard_search_knowledge(category: str = "", limit: int = 10) -> list[dict]:
+    """Search the Notion knowledge base by category."""
+    return await dashboard_query_knowledge(category=category, limit=limit)

@@ -23,6 +23,7 @@ env/
 .env
 .env.local
 .env.production
+.env.example
 
 # OS
 .DS_Store
@@ -32,8 +33,12 @@ Thumbs.db
 output/
 *.session
 .claude/settings.local.json
+.claude/memory/
 credentials/
 kaggle.json
 .kaggle_notebooks*/
 *.db
 data/
+
+# Tests
+Tests/notion_api_check.py
