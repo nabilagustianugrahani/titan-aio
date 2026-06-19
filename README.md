@@ -4,7 +4,7 @@
 
 > Build affiliate campaigns. Not images. Not videos. **Revenue.**
 >
-> 48 MCP tools · 24 agents · 67 tests · Autonomous pipeline
+> 48 MCP tools · 22 agents · 66 tests · Autonomous pipeline
 
 ---
 
@@ -12,7 +12,7 @@
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest Tests/ -v        # 67 tests
+python -m pytest Tests/ -v        # 66 tests
 python -m titan.main               # Dashboard → http://localhost:8080/dashboard
 ```
 
@@ -20,37 +20,44 @@ python -m titan.main               # Dashboard → http://localhost:8080/dashboa
 
 ```bash
 python titan/autonomous_loop.py --mode once
-# → Discover → Score → Create → Sync Notion
+# → Discover → Analyze → Create → Publish → Track
 ```
 
 ## Architecture
 
 ```
 INPUT (keyword) → Scrape Agent → Product Agent → Review Agent
-→ UGC Agent → Creative Agent → Video Worker → Publisher
-→ Auto-Upload (TikTok/IG/YT/Threads/X/FB)
+→ Content Agent (hooks + scripts + thumbnails + storyboards)
+→ Video Worker → Publisher (6 platforms)
 → Analytics → Memory → Optimization
 ```
 
-## Agents (24)
+## Agents (22)
 
 | Agent | File | Function |
 |-------|------|----------|
 | CEO | `orchestrator.py` | Orchestrator with MessageBus |
 | Product | `product.py` | 3-score analysis |
 | Review | `review.py` | Pain points, benefits |
-| UGC | `ugc.py` | 10 hooks + 10 scripts |
-| Creative | `creative.py` | Storyboard, thumbnails |
+| **Content** | `content.py` | **Hooks + scripts + thumbnails + storyboards** |
 | Offer | `offer.py` | Positioning, CTA |
 | Scrape | `scraper.py` | Auto product search |
+| Trend | `trend.py` | DB + social listening |
+| Competitor | `competitor.py` | Angle extraction, gap analysis |
+| Analytics | `analytics.py` | CTR, ROI, per-platform metrics |
+| Knowledge | `knowledge.py` | Pattern synthesis, playbooks |
+| Publisher | `publisher.py` | Per-platform formatting + anti-shadowban |
+| Video | `video.py` | Shot planning, worker dispatch |
 | Commission Hunter | `commission_hunter.py` | Find highest commission |
 | Anti-Shadowban | `antishadowban.py` | Platform safety |
 | Affiliate | `affiliate.py` | Link generation |
-| Publisher | `publisher.py` | Caption, hashtags |
-| AutoUpload | `auto_upload.py` | BrowserUse upload |
 | Campaign Builder | `campaign_builder.py` | Package assembly |
 | Asset | `asset.py` | Download images |
-| +11 more... | | |
+| Avatar | `avatar.py` | AI spokesperson |
+| Finance | `finance.py` | Revenue, commission tracking |
+| Growth | `growth.py` | Auto-scale winners, kill losers |
+| Memory | `memory.py` | ChromaDB vector store |
+| Message Bus | `message_bus.py` | Inter-agent events |
 
 ## MCP Server (48 tools)
 
@@ -70,6 +77,31 @@ python -m titan.main
 - One-click "Run Campaign" button
 - Auto-refresh every 30s
 
+## LangGraph Workflow
+
+```
+discover → trends → product → [reviews ‖ competitors]
+→ offer → content → [optimize hooks or affiliate]
+→ captions → finalize → analytics → END
+```
+
+13 nodes · parallel fan-out · conditional branching · self-healing retries
+
+## Benchmark
+
+```
+TrendAgent        16ms   ✅
+CompetitorAgent    6ms   ✅
+AnalyticsAgent     2ms   ✅
+KnowledgeAgent    68ms   ✅
+PublisherAgent     0.3ms ✅
+VideoAgent         0.1ms ✅
+ContentAgent      29ms   ✅
+ProductAgent      19ms   ✅
+ReviewAgent       26ms   ✅
+CEO Full Pipeline  68ms  ✅
+```
+
 ## Integrations
 
 | Service | Status | Detail |
@@ -85,7 +117,7 @@ python -m titan.main
 ## Stack
 
 ```
-Python 3.11+ · FastAPI · FastMCP · Playwright · ChromaDB
+Python 3.11+ · FastAPI · FastMCP · LangGraph · Playwright · ChromaDB
 SQLite (dev) · MongoDB (prod) · Notion API · Google Drive API
 ```
 
@@ -94,30 +126,24 @@ SQLite (dev) · MongoDB (prod) · Notion API · Google Drive API
 ```
 TITAN-AIO/
 ├── CLAUDE.md              ← Project constitution
-├── .titan/                ← Autonomous OS (12 specs)
 ├── titan/                 ← FastAPI server + templates
 ├── MCP/                   ← 48 tools + standalone server
-├── Services/              ← 23 agents + orchestrator
+├── Services/              ← 22 agents + orchestrator
 │   ├── agents/            ← All agent implementations
 │   ├── notion/            ← Notion API + dashboard
 │   ├── gdrive/            ← Google Drive storage
 │   ├── mongodb/           ← Atlas client
-│   └── memory/            ← ChromaDB vector store
-├── Workers/               ← Kaggle notebooks
-├── Database/              ← ORM + repository
-├── Tests/                 ← 67 tests
+│   ├── memory/            ← ChromaDB vector store
+│   └── publisher/         ← Auto-upload + anti-shadowban
+├── Workers/               ← Kaggle notebooks (FLUX, Wan 2.2)
+├── Database/              ← ORM + repository (37 models)
+├── Tests/                 ← 66 tests + benchmark
 └── AGENTS/                ← Agent documentation
 ```
 
-## Scheduler
+## CI/CD
 
-```bash
-# Run continuously:
-python -m Services.scheduler --interval 60
-
-# Or via cron (1 cycle):
-python titan/autonomous_loop.py --mode once
-```
+GitHub Actions: test on Python 3.11 + 3.12 on every push.
 
 ---
 
