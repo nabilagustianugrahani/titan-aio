@@ -35,6 +35,8 @@ from Services.agents.affiliate import AffiliateAgent
 from Services.agents.publisher import PublisherAgent
 from Services.agents.antishadowban import AntiShadowbanAgent
 from Services.agents.commission_hunter import CommissionHunterAgent
+from Services.agents.trend import TrendAgent
+from Services.agents.analytics import AnalyticsAgent
 from Services.agents.message_bus import get_bus
 
 logger = logging.getLogger("titan.graph")
@@ -78,6 +80,7 @@ class GraphState(TypedDict):
     errors: int
 
     # Stages
+    trend: dict | None
     product: dict | None
     reviews: dict | None
     competitors: dict | None
@@ -91,6 +94,7 @@ class GraphState(TypedDict):
     captions: dict | None
     affiliate_links: dict | None
     campaign_id: str | None
+    analytics: dict | None
 
     # Control
     optimization_round: int
@@ -103,10 +107,10 @@ def initial_state(url: str = "", keyword: str = "", category: str = "umum", plat
     return GraphState(
         url=url, keyword=keyword, category=category, platform=platform,
         phase=CampaignPhase.DISCOVER, telemetry=[], errors=0,
-        product=None, reviews=None, competitors=None, offer=None,
+        trend=None, product=None, reviews=None, competitors=None, offer=None,
         hooks=None, scripts=None, thumbnail=None, image=None,
         video=None, avatar=None, captions=None, affiliate_links=None,
-        campaign_id=None, optimization_round=0, max_optimization_rounds=3,
+        campaign_id=None, analytics=None, optimization_round=0, max_optimization_rounds=3,
         error=None, retries=0,
     )
 
@@ -151,6 +155,14 @@ async def discover_product(state: GraphState) -> dict:
     return {"error": "No URL or keyword provided", "phase": CampaignPhase.FAILED}
 
 
+async def analyze_trends(state: GraphState) -> dict:
+    agent = TrendAgent()
+    cat = state.get("category", "umum")
+    result = await agent(category=cat)
+    get_bus().publish("trends.analyzed", result, "TrendAgent")
+    return {"trend": result, "phase": CampaignPhase.ANALYZE}
+
+
 async def analyze_product(state: GraphState) -> dict:
     agent = ProductAgent()
     url = state["product"].get("url", state.get("url", ""))
@@ -183,7 +195,7 @@ async def analyze_competitors(state: GraphState) -> dict:
     get_bus().publish("competitors.analyzed", {"category": cat}, "CompetitorAgent")
     return {"competitors": {"count": result.competitors_analyzed,
                             "winning_hooks": [h.hook for h in result.winning_hooks[:5]],
-                            "gaps": result.gaps_identifed if hasattr(result, 'gaps_identifed') else []}}
+                            "gaps": result.gaps_identified}}
 
 
 async def generate_offer(state: GraphState) -> dict:
@@ -267,13 +279,23 @@ async def finalize(state: GraphState) -> dict:
         return {"error": f"Finalize failed: {e}", "phase": CampaignPhase.FAILED}
 
 
+async def track_analytics(state: GraphState) -> dict:
+    agent = AnalyticsAgent()
+    campaign_id = state.get("campaign_id", "")
+    if not campaign_id:
+        return {"analytics": None}
+    result = await agent(campaign_id=campaign_id)
+    get_bus().publish("analytics.tracked", result, "AnalyticsAgent")
+    return {"analytics": result}
+
+
 # ── Conditional edges ──────────────────────────────────────────
 
-def route_after_discover(state: GraphState) -> Literal["analyze_product", "__end__"]:
+def route_after_discover(state: GraphState) -> Literal["analyze_trends", "__end__"]:
     if state.get("phase") == CampaignPhase.FAILED:
         return END
     if state.get("product"):
-        return "analyze_product"
+        return "analyze_trends"
     return END
 
 
@@ -310,6 +332,7 @@ def build_supergraph() -> StateGraph:
 
     # Add all nodes — wrap each with run_node for telemetry
     async def _discover(s): return await run_node(s, "discover_product", discover_product)
+    async def _trends(s): return await run_node(s, "analyze_trends", analyze_trends)
     async def _analyze(s): return await run_node(s, "analyze_product", analyze_product)
     async def _reviews(s): return await run_node(s, "analyze_reviews", analyze_reviews)
     async def _competitors(s): return await run_node(s, "analyze_competitors", analyze_competitors)
@@ -320,8 +343,10 @@ def build_supergraph() -> StateGraph:
     async def _affiliate(s): return await run_node(s, "generate_affiliate", generate_affiliate)
     async def _captions(s): return await run_node(s, "generate_captions", generate_captions)
     async def _final(s): return await run_node(s, "finalize", finalize)
+    async def _analytics(s): return await run_node(s, "track_analytics", track_analytics)
 
     workflow.add_node("discover_product", _discover)
+    workflow.add_node("analyze_trends", _trends)
     workflow.add_node("analyze_product", _analyze)
     workflow.add_node("analyze_reviews", _reviews)
     workflow.add_node("analyze_competitors", _competitors)
@@ -332,9 +357,11 @@ def build_supergraph() -> StateGraph:
     workflow.add_node("generate_affiliate", _affiliate)
     workflow.add_node("generate_captions", _captions)
     workflow.add_node("finalize", _final)
+    workflow.add_node("track_analytics", _analytics)
 
-    # Edges: discover → product → parallel reviews+competitors → offer → ugc
+    # Edges: discover → trends → product → parallel reviews+competitors → offer → ugc
     workflow.add_conditional_edges("discover_product", route_after_discover)
+    workflow.add_edge("analyze_trends", "analyze_product")
     workflow.add_conditional_edges("analyze_product", route_after_product)
     workflow.add_edge("analyze_reviews", "generate_offer")
     workflow.add_edge("analyze_competitors", "generate_offer")
@@ -344,7 +371,8 @@ def build_supergraph() -> StateGraph:
     workflow.add_edge("generate_creative", "generate_affiliate")
     workflow.add_edge("generate_affiliate", "generate_captions")
     workflow.add_edge("generate_captions", "finalize")
-    workflow.add_edge("finalize", END)
+    workflow.add_edge("finalize", "track_analytics")
+    workflow.add_edge("track_analytics", END)
 
     workflow.set_entry_point("discover_product")
 
