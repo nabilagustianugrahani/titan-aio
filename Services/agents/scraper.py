@@ -118,6 +118,14 @@ class ScrapeAgent:
         import os
         scrapingbee_key = os.environ.get("SCRAPINGBEE_API_KEY", "")
         if not scrapingbee_key:
+            try:
+                from dotenv import load_dotenv
+                from pathlib import Path
+                load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
+                scrapingbee_key = os.environ.get("SCRAPINGBEE_API_KEY", "")
+            except Exception:
+                pass
+        if not scrapingbee_key:
             return []
 
         urls = {
