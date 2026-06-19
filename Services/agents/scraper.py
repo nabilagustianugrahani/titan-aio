@@ -82,13 +82,13 @@ class ScrapeAgent:
         # Try Agent-Reach for social discovery
         if self.use_reach:
             try:
-                from Services.agents.trend_reach import AgentReachTrend
-                reach = AgentReachTrend(use_reach=True)
-                results = await reach.search(
-                    query=f"{category} viral produk" if category else "produk viral terbaru",
-                    sources=["twitter", "youtube", "reddit"],
+                from Services.agents.trend import TrendAgent
+                trend = TrendAgent()
+                # Use social search directly
+                social = await trend._search_social(
+                    query=f"{category} viral produk" if category else "produk viral terbaru"
                 )
-                trends.extend(results)
+                trends.extend(social)
             except Exception:
                 pass
 
@@ -219,7 +219,11 @@ class ScrapeAgent:
     # -- Fallback: simulated data (zero deps) -----------------
 
     def _simulate_search(self, platform: str, keyword: str, limit: int) -> list[dict]:
-        """Fallback simulated search results."""
+        """Fallback simulated search results. Using simulated data — install scraping deps for real data."""
+        import logging
+        logging.getLogger("titan.scraper").warning(
+            "Using simulated search data for '%s' — install httpx+lxml for real scraping", keyword
+        )
         import random
         products = [
             {"title": f"{keyword} Premium Original - Terlaris", "price": round(random.uniform(15000, 500000), -3), "rating": round(random.uniform(3.5, 5), 1), "sales": random.randint(100, 5000), "platform": platform, "source": "simulated"},
@@ -231,6 +235,8 @@ class ScrapeAgent:
         return products[:limit]
 
     def _simulate_details(self, url: str) -> dict:
+        import logging
+        logging.getLogger("titan.scraper").warning("Using simulated product details — install scraping deps for real data")
         import random
         return {
             "title": "Produk Premium Original",

@@ -59,8 +59,7 @@ class TestImports:
         from Services.agents.base import BaseAgent, AgentContext
         from Services.agents.product import ProductAgent
         from Services.agents.review import ReviewAgent
-        from Services.agents.ugc import UGCAgent
-        from Services.agents.creative import CreativeAgent
+        from Services.agents.content import ContentAgent
         assert BaseAgent is not None
 
     def test_workers(self):

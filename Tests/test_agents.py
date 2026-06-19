@@ -40,32 +40,22 @@ class TestReviewAgent:
 
 
 @pytest.mark.asyncio
-class TestUGCAgent:
-    """Test UGC Agent."""
+class TestContentAgent:
+    """Test Content Agent (unified UGC + Creative)."""
 
     async def test_generate(self):
-        from Services.agents.ugc import UGCAgent
+        from Services.agents.content import ContentAgent
         from MCP.schemas import GenerateOfferOutput
 
-        agent = UGCAgent()
+        agent = ContentAgent()
         offer = GenerateOfferOutput(
             product_id="p1", primary_angle="test", value_proposition="vp"
         )
         result = await agent(product_id="p1", offer_strategy=offer)
         assert "hooks" in result
         assert "scripts" in result
-        assert len(result["hooks"].hooks) > 0
-
-
-@pytest.mark.asyncio
-class TestCreativeAgent:
-    """Test Creative Agent."""
-
-    async def test_generate(self):
-        from Services.agents.creative import CreativeAgent
-        agent = CreativeAgent()
-        result = await agent(product_id="p1")
         assert "thumbnail" in result
+        assert len(result["hooks"].hooks) > 0
         assert result["thumbnail"].thumbnail.concept
 
 

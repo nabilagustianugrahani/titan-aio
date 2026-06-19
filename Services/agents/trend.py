@@ -1,27 +1,55 @@
-"""Trend Agent — detects market trends from DB product + metric data."""
+"""Trend Agent — detects market trends from DB + optional social listening."""
 
 from __future__ import annotations
 
+import asyncio
+import json
+import logging
+import subprocess
 from datetime import datetime
-from typing import Any
-
-from sqlalchemy import select, func
+from typing import Any, Optional
 
 from Database.models import Product, Metric
 from Database.repository import Repository
 from Services.agents.base import BaseAgent, AgentContext
 
+logger = logging.getLogger("titan.trend")
+
 
 class TrendAgent(BaseAgent):
-    """Detects trending products and market opportunities from DB data."""
+    """Detects trending products and market opportunities.
+
+    Combines DB product/metric analysis with optional social listening
+    via Agent-Reach CLI (Twitter, Reddit, YouTube).
+    """
 
     async def execute(
-        self, ctx: AgentContext, category: str = "", **kwargs: Any
+        self, ctx: AgentContext, category: str = "", query: str = "",
+        use_social: bool = False, **kwargs: Any,
     ) -> dict:
+        # ── DB analysis ──
+        db_result = await self._analyze_db(ctx, category)
+
+        # ── Social listening (optional) ──
+        social_signals: list[dict] = []
+        if use_social:
+            social_signals = await self._search_social(query or category)
+
+        # ── Boost score from social signals ──
+        social_boost = min(len(social_signals) * 0.3, 2.0)
+        trend_score = min(db_result["trend_score"] + social_boost, 10.0)
+
+        return {
+            **db_result,
+            "trend_score": round(trend_score, 1),
+            "social_signals": social_signals,
+        }
+
+    async def _analyze_db(self, ctx: AgentContext, category: str) -> dict:
+        """Analyze products and metrics from database."""
         repo = Repository(ctx.session, Product)
         metric_repo = Repository(ctx.session, Metric)
 
-        # ── Products in this category ──
         if category:
             products = await repo.find(category=category)
         else:
@@ -35,55 +63,41 @@ class TrendAgent(BaseAgent):
         total_sales = sum(p.total_sales or 0 for p in products)
         avg_price = sum(p.price for p in products) / product_count
 
-        # High-rated products ratio
         high_rated = sum(1 for p in products if (p.rating or 0) >= 4.0)
         quality_ratio = high_rated / product_count
 
-        # ── Metrics for these products ──
-        product_ids = [p.id for p in products]
+        # Metrics
         all_metrics: list = []
-        for pid in product_ids:
-            m = await metric_repo.find(campaign_id=pid)
+        for p in products:
+            m = await metric_repo.find(campaign_id=p.id)
             all_metrics.extend(m)
 
         total_views = sum(m.views for m in all_metrics)
         total_clicks = sum(m.clicks for m in all_metrics)
         total_revenue = sum(m.revenue for m in all_metrics)
 
-        # ── Compute trend score (0-10) ──
-        # Factor 1: product density (more products = more interest)
-        density_score = min(product_count / 10.0, 3.0)  # max 3
+        # Score (0-10)
+        density = min(product_count / 10.0, 3.0)
+        sales = min(total_sales / 1000.0, 3.0)
+        quality = quality_ratio * 2.0
+        engagement = min((total_views + total_clicks) / 5000.0, 2.0)
+        trend_score = round(min(density + sales + quality + engagement, 10.0), 1)
 
-        # Factor 2: sales velocity
-        sales_score = min(total_sales / 1000.0, 3.0)  # max 3
-
-        # Factor 3: quality signal
-        quality_score = quality_ratio * 2.0  # max 2
-
-        # Factor 4: engagement (views + clicks)
-        engagement_score = min((total_views + total_clicks) / 5000.0, 2.0)  # max 2
-
-        trend_score = round(
-            density_score + sales_score + quality_score + engagement_score, 1
-        )
-        trend_score = min(trend_score, 10.0)
-
-        # ── Trend direction ──
-        # Compare high usage_count products (recent) vs low (older)
+        # Direction
         sorted_by_usage = sorted(products, key=lambda p: p.usage_count, reverse=True)
         top_half = sorted_by_usage[: product_count // 2 or 1]
-        bottom_half = sorted_by_usage[product_count // 2 or 1 :]
-        top_avg_sales = sum(p.total_sales or 0 for p in top_half) / len(top_half)
-        bot_avg_sales = sum(p.total_sales or 0 for p in bottom_half) / len(bottom_half)
+        bot_half = sorted_by_usage[product_count // 2 or 1 :]
+        top_sales = sum(p.total_sales or 0 for p in top_half) / len(top_half)
+        bot_sales = sum(p.total_sales or 0 for p in bot_half) / len(bot_half)
 
-        if top_avg_sales > bot_avg_sales * 1.2:
+        if top_sales > bot_sales * 1.2:
             direction = "up"
-        elif top_avg_sales < bot_avg_sales * 0.8:
+        elif top_sales < bot_sales * 0.8:
             direction = "down"
         else:
             direction = "stable"
 
-        # ── Velocity ──
+        # Velocity
         if trend_score >= 8:
             velocity = "viral"
         elif trend_score >= 5:
@@ -93,15 +107,9 @@ class TrendAgent(BaseAgent):
         else:
             velocity = "slow"
 
-        # ── Top products ──
         top_products = [
-            {
-                "product_id": p.id,
-                "title": p.title[:80],
-                "price": p.price,
-                "rating": p.rating,
-                "sales": p.total_sales,
-            }
+            {"product_id": p.id, "title": p.title[:80], "price": p.price,
+             "rating": p.rating, "sales": p.total_sales}
             for p in sorted_by_usage[:5]
         ]
 
@@ -119,6 +127,52 @@ class TrendAgent(BaseAgent):
             "detected_at": datetime.utcnow().isoformat(),
         }
 
+    async def _search_social(self, query: str) -> list[dict]:
+        """Search social platforms via Agent-Reach CLI (fallback to simulated)."""
+        try:
+            return await self._agent_reach_search(query)
+        except Exception as e:
+            logger.debug("Agent-Reach not available: %s — using simulated data", e)
+            return self._simulate_social(query)
+
+    async def _agent_reach_search(self, query: str) -> list[dict]:
+        """Call Agent-Reach CLI for social listening."""
+        sources = ["twitter", "reddit", "youtube"]
+        results: list[dict] = []
+
+        for source in sources:
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    "agent-reach", "skill", source, query, "--json",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
+                if proc.returncode == 0:
+                    data = json.loads(stdout.decode())
+                    items = data if isinstance(data, list) else data.get("results", [])
+                    for item in items[:10]:
+                        results.append({
+                            "source": source,
+                            "text": item.get("text", item.get("title", ""))[:200],
+                            "url": item.get("url", ""),
+                            "engagement": item.get("engagement", item.get("likes", 0)),
+                        })
+            except (asyncio.TimeoutError, FileNotFoundError, json.JSONDecodeError):
+                continue
+
+        if not results:
+            raise RuntimeError("No results from Agent-Reach")
+        return results
+
+    def _simulate_social(self, query: str) -> list[dict]:
+        """Simulated social data when Agent-Reach not installed."""
+        return [
+            {"source": "twitter", "text": f"Trending: {query} banyak dibicarakan", "engagement": 1240, "simulated": True},
+            {"source": "reddit", "text": f"Review {query} di subreddit Indonesia", "engagement": 456, "simulated": True},
+            {"source": "youtube", "text": f"Review {query} — 50k views", "engagement": 50000, "simulated": True},
+        ]
+
     @staticmethod
     def _empty(category: str) -> dict:
         return {
@@ -132,5 +186,6 @@ class TrendAgent(BaseAgent):
             "avg_price": 0.0,
             "engagement": {"views": 0, "clicks": 0, "revenue": 0.0},
             "top_products": [],
+            "social_signals": [],
             "detected_at": datetime.utcnow().isoformat(),
         }

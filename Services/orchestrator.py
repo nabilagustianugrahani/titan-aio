@@ -22,7 +22,7 @@ from Services.agents.asset import AssetAgent
 from Services.agents.avatar import AvatarAgent
 from Services.agents.campaign_builder import CampaignBuilder
 from Services.agents.competitor import CompetitorAgent
-from Services.agents.creative import CreativeAgent
+from Services.agents.content import ContentAgent
 from Services.agents.finance import FinanceAgent
 from Services.agents.growth import GrowthAgent
 from Services.agents.knowledge import KnowledgeAgent
@@ -32,7 +32,6 @@ from Services.agents.product import ProductAgent
 from Services.agents.publisher import PublisherAgent
 from Services.agents.review import ReviewAgent
 from Services.agents.trend import TrendAgent
-from Services.agents.ugc import UGCAgent
 from Services.agents.video import VideoAgent
 
 
@@ -56,8 +55,7 @@ class CEOAgent:
     def __init__(self) -> None:
         self.product = ProductAgent("ProductAgent")
         self.review = ReviewAgent("ReviewAgent")
-        self.ugc = UGCAgent("UGCAgent")
-        self.creative = CreativeAgent("CreativeAgent")
+        self.content = ContentAgent("ContentAgent")
         self.offer = OfferAgent("OfferAgent")
         self.trend = TrendAgent("TrendAgent")
         self.competitor = CompetitorAgent("CompetitorAgent")
@@ -106,17 +104,18 @@ class CEOAgent:
         offer = await self.offer(product=product, reviews=reviews, competitors=competitors)
         bus.publish("offer.created", {"product_id": product.product_id, "angle": offer.primary_angle}, "OfferAgent")
 
-        # 5. UGC
-        ugc_result = await self.ugc(product_id=product.product_id, offer_strategy=offer)
-        bus.publish("ugc.generated", {"product_id": product.product_id, "hooks": len(ugc_result.get("hooks", GenerateHooksOutput(product_id="")).hooks)}, "UGCAgent")
+        # 5. Content (UGC + Creative combined)
+        content_result = await self.content(
+            product_id=product.product_id,
+            offer_strategy=offer,
+            category=product.category or "umum",
+            title=product.title,
+        )
+        bus.publish("content.generated", {"product_id": product.product_id}, "ContentAgent")
 
-        # 6. Creative
-        creative_result = await self.creative(product_id=product.product_id)
-        bus.publish("creative.generated", {"product_id": product.product_id}, "CreativeAgent")
-
-        hooks_output = ugc_result.get("hooks", GenerateHooksOutput(product_id=product.product_id))
-        scripts_output = ugc_result.get("scripts", GenerateScriptOutput(product_id=product.product_id))
-        thumbnail_output = creative_result.get("thumbnail", GenerateThumbnailOutput(product_id=product.product_id))
+        hooks_output = content_result.get("hooks", GenerateHooksOutput(product_id=product.product_id))
+        scripts_output = content_result.get("scripts", GenerateScriptOutput(product_id=product.product_id))
+        thumbnail_output = content_result.get("thumbnail", GenerateThumbnailOutput(product_id=product.product_id))
         image_output = GenerateImageOutput(image_url="", model_used="flux-schnell", seed=0)
 
         result = AffiliatePackageOutput(

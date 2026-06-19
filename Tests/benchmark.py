@@ -77,8 +77,8 @@ async def run_benchmarks():
     r = await bench("VideoAgent", lambda: VideoAgent()(script="Review power bank terbaik 2024"))
     results.append(r)
 
-    from Services.agents.creative import CreativeAgent
-    r = await bench("CreativeAgent", lambda: CreativeAgent()(product_id="test", category="elektronik"))
+    from Services.agents.content import ContentAgent
+    r = await bench("ContentAgent", lambda: ContentAgent()(product_id="test", category="elektronik"))
     results.append(r)
 
     from Services.agents.product import ProductAgent

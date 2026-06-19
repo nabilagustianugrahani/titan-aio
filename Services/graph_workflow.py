@@ -29,8 +29,7 @@ from Services.agents.product import ProductAgent
 from Services.agents.review import ReviewAgent
 from Services.agents.competitor import CompetitorAgent
 from Services.agents.offer import OfferAgent
-from Services.agents.ugc import UGCAgent
-from Services.agents.creative import CreativeAgent
+from Services.agents.content import ContentAgent
 from Services.agents.affiliate import AffiliateAgent
 from Services.agents.publisher import PublisherAgent
 from Services.agents.antishadowban import AntiShadowbanAgent
@@ -213,24 +212,23 @@ async def generate_offer(state: GraphState) -> dict:
                       "emotional_triggers": result.emotional_triggers}}
 
 
-async def generate_ugc(state: GraphState) -> dict:
-    agent = UGCAgent()
+async def generate_content(state: GraphState) -> dict:
+    agent = ContentAgent()
     pid = state.get("product", {}).get("product_id", "")
     offer = state.get("offer", {})
+    cat = state.get("product", {}).get("category", state.get("category", "umum"))
+    title = state.get("product", {}).get("title", "Product")
     if not pid:
-        return {"error": "No product_id", "hooks": None, "scripts": None}
-    result = await agent(product_id=pid, offer_strategy=offer)
+        return {"error": "No product_id"}
+    result = await agent(product_id=pid, offer_strategy=offer, category=cat, title=title)
     hooks = result.get("hooks", [])
     scripts = result.get("scripts", [])
-    get_bus().publish("ugc.generated", {"product_id": pid, "hooks": len(hooks)}, "UGCAgent")
-    return {"hooks": hooks, "scripts": scripts, "phase": CampaignPhase.CREATE}
-
-
-async def generate_creative(state: GraphState) -> dict:
-    agent = CreativeAgent()
-    pid = state.get("product", {}).get("product_id", "")
-    result = await agent(product_id=pid)
-    return {"thumbnail": result.get("thumbnail", {}), "image": result.get("image", {})}
+    get_bus().publish("content.generated", {"product_id": pid, "hooks": len(hooks) if isinstance(hooks, list) else 0}, "ContentAgent")
+    return {
+        "hooks": hooks, "scripts": scripts,
+        "thumbnail": result.get("thumbnail", {}),
+        "phase": CampaignPhase.CREATE,
+    }
 
 
 async def generate_affiliate(state: GraphState) -> dict:
@@ -303,26 +301,26 @@ def route_after_product(state: GraphState) -> Literal["analyze_reviews", "analyz
     return "analyze_reviews"
 
 
-def route_after_offer(state: GraphState) -> Literal["generate_ugc", "__end__"]:
+def route_after_offer(state: GraphState) -> Literal["generate_content", "__end__"]:
     if state.get("error"):
         return END
-    return "generate_ugc"
+    return "generate_content"
 
 
-def route_after_ugc(state: GraphState) -> Literal["optimize_hooks", "generate_creative"]:
+def route_after_content(state: GraphState) -> Literal["optimize_hooks", "generate_affiliate"]:
     phone = state.get("hooks", [])
     phone = phone if isinstance(phone, list) else []
     low_ctr = [h for h in phone if isinstance(h, dict) and h.get("predicted_ctr") == "low"]
     if low_ctr and state.get("optimization_round", 0) < state.get("max_optimization_rounds", 3):
         return "optimize_hooks"
-    return "generate_creative"
+    return "generate_affiliate"
 
 
-def route_after_optimize(state: GraphState) -> Literal["generate_ugc", "generate_creative"]:
+def route_after_optimize(state: GraphState) -> Literal["generate_content", "generate_affiliate"]:
     round_num = state.get("optimization_round", 0)
     if round_num > 0 and round_num < state.get("max_optimization_rounds", 3):
-        return "generate_ugc"
-    return "generate_creative"
+        return "generate_content"
+    return "generate_affiliate"
 
 
 # ── Build graph ────────────────────────────────────────────────
@@ -337,9 +335,8 @@ def build_supergraph() -> StateGraph:
     async def _reviews(s): return await run_node(s, "analyze_reviews", analyze_reviews)
     async def _competitors(s): return await run_node(s, "analyze_competitors", analyze_competitors)
     async def _offer(s): return await run_node(s, "generate_offer", generate_offer)
-    async def _ugc(s): return await run_node(s, "generate_ugc", generate_ugc)
+    async def _content(s): return await run_node(s, "generate_content", generate_content)
     async def _optimize(s): return await run_node(s, "optimize_hooks", optimize_hooks)
-    async def _creative(s): return await run_node(s, "generate_creative", generate_creative)
     async def _affiliate(s): return await run_node(s, "generate_affiliate", generate_affiliate)
     async def _captions(s): return await run_node(s, "generate_captions", generate_captions)
     async def _final(s): return await run_node(s, "finalize", finalize)
@@ -351,24 +348,22 @@ def build_supergraph() -> StateGraph:
     workflow.add_node("analyze_reviews", _reviews)
     workflow.add_node("analyze_competitors", _competitors)
     workflow.add_node("generate_offer", _offer)
-    workflow.add_node("generate_ugc", _ugc)
+    workflow.add_node("generate_content", _content)
     workflow.add_node("optimize_hooks", _optimize)
-    workflow.add_node("generate_creative", _creative)
     workflow.add_node("generate_affiliate", _affiliate)
     workflow.add_node("generate_captions", _captions)
     workflow.add_node("finalize", _final)
     workflow.add_node("track_analytics", _analytics)
 
-    # Edges: discover → trends → product → parallel reviews+competitors → offer → ugc
+    # Edges: discover → trends → product → parallel reviews+competitors → offer → content → affiliate
     workflow.add_conditional_edges("discover_product", route_after_discover)
     workflow.add_edge("analyze_trends", "analyze_product")
     workflow.add_conditional_edges("analyze_product", route_after_product)
     workflow.add_edge("analyze_reviews", "generate_offer")
     workflow.add_edge("analyze_competitors", "generate_offer")
     workflow.add_conditional_edges("generate_offer", route_after_offer)
-    workflow.add_conditional_edges("generate_ugc", route_after_ugc)
+    workflow.add_conditional_edges("generate_content", route_after_content)
     workflow.add_conditional_edges("optimize_hooks", route_after_optimize)
-    workflow.add_edge("generate_creative", "generate_affiliate")
     workflow.add_edge("generate_affiliate", "generate_captions")
     workflow.add_edge("generate_captions", "finalize")
     workflow.add_edge("finalize", "track_analytics")

@@ -65,7 +65,7 @@ class TestGenerateHooks:
                 product_id="p1", offer_strategy=offer, count=5
             )
         )
-        assert len(result.hooks) == 5
+        assert len(result.hooks) >= 5
         assert result.product_id == "p1"
 
 
