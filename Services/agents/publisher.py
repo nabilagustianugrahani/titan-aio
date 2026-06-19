@@ -11,37 +11,28 @@ from Services.publisher.anti_shadowban import AntiShadowban
 _PLATFORM_LIMITS = {
     "tiktok": 300,
     "instagram": 2200,
-    "youtube_shorts": 5000,
     "facebook": 63206,
-    "shopee_feed": 500,
-    "tokopedia_feed": 500,
 }
 
 # Platform-specific CTA styles
 _PLATFORM_CTA = {
     "tiktok": "Link di bio! 👆",
     "instagram": "Link di bio! 🔗",
-    "youtube_shorts": "Cek link di deskripsi! 👇",
     "facebook": "Order sekarang! Link di komentar.",
-    "shopee_feed": "Beli sekarang di Shopee! 🛒",
-    "tokopedia_feed": "Beli sekarang di Tokopedia! 🛒",
 }
 
 # Platform-specific first comment for affiliate links
 _FIRST_COMMENT = {
     "tiktok": True,
     "instagram": True,
-    "youtube_shorts": False,
     "facebook": True,
-    "shopee_feed": False,
-    "tokopedia_feed": False,
 }
 
 
 class PublisherAgent(BaseAgent):
     """Formats and prepares content for multi-platform distribution."""
 
-    _PLATFORMS = ["tiktok", "instagram", "youtube_shorts", "facebook", "shopee_feed", "tokopedia_feed"]
+    _PLATFORMS = ["tiktok", "instagram", "facebook"]
 
     async def execute(
         self, ctx: AgentContext, caption: str = "", **kwargs: Any

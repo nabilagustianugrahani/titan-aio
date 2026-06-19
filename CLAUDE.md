@@ -88,3 +88,28 @@ AGENTS/                 17 agent specification docs
 - Secrets in `.env` (gitignored), never in code
 - DI pattern: agents get sessions via `AgentContext`, singletons only for `config.settings`
 - MCP tool files are thin: validate input → call core function → return output
+
+## VPS Rules (CRITICAL — LOW MEMORY 859MB RAM)
+
+**DO NOT install heavy packages on VPS:**
+- ❌ torch, pytorch, tensorflow
+- ❌ diffusers, transformers, accelerate
+- ❌ opencv-python, moviepy, imageio
+- ❌ sentencepiece, protobuf (heavy)
+- ❌ any ML/AI/GPU library
+
+**VPS is for lightweight code only:**
+- ✅ httpx, aiohttp (HTTP requests)
+- ✅ Pillow (image processing, <50MB)
+- ✅ SQLAlchemy, pydantic (database)
+- ✅ fastmcp, fastapi (API server)
+
+**GPU work goes to Kaggle notebooks:**
+- Generate `.ipynb` notebook → upload to Kaggle → run there
+- Download output → upload to server
+- Never run GPU tasks on VPS
+
+**If you need to install something:**
+1. Check if it's lightweight (<50MB)
+2. Check if it can run on Kaggle instead
+3. Ask user first if unsure

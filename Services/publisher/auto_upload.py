@@ -11,8 +11,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from browser_use import Browser
-from browser_use.config import Config as BrowserConfig
+try:
+    from browser_use import Browser
+    from browser_use.config import Config as BrowserConfig
+    HAS_BROWSER = True
+except ImportError:
+    Browser = None
+    BrowserConfig = None
+    HAS_BROWSER = False
 
 # ---------------------------------------------------------------------------
 # Config helper (no hard dep on titan.config; can be used standalone)
@@ -50,16 +56,13 @@ class AutoUploader:
     """
 
     PLATFORMS = frozenset({
-        "tiktok", "instagram", "youtube", "threads", "twitter", "facebook",
+        "tiktok", "instagram", "facebook",
     })
 
     # -- Login URLs ----------------------------------------------------------
     LOGIN_URLS: dict[str, str] = {
         "tiktok": "https://www.tiktok.com/login",
         "instagram": "https://www.instagram.com/",
-        "youtube": "https://www.youtube.com/",
-        "threads": "https://www.threads.net/login",
-        "twitter": "https://twitter.com/login",
         "facebook": "https://www.facebook.com/",
     }
 
@@ -67,9 +70,6 @@ class AutoUploader:
     UPLOAD_URLS: dict[str, str] = {
         "tiktok": "https://www.tiktok.com/upload/",
         "instagram": "https://www.instagram.com/",
-        "youtube": "https://studio.youtube.com/upload/",
-        "threads": "https://www.threads.net/",
-        "twitter": "https://twitter.com/compose/tweet",
         "facebook": "https://www.facebook.com/",
     }
 
@@ -148,9 +148,6 @@ class AutoUploader:
             upload_fn: Any = {
                 "tiktok": self._upload_tiktok,
                 "instagram": self._upload_instagram,
-                "youtube": self._upload_youtube,
-                "threads": self._upload_threads,
-                "twitter": self._upload_twitter,
                 "facebook": self._upload_facebook,
             }[platform]
 
@@ -285,9 +282,6 @@ class AutoUploader:
         triggers: dict[str, list[str]] = {
             "tiktok": ["login", "signin", "passport"],
             "instagram": ["login", "accounts/login"],
-            "youtube": ["signin", "accounts/signin"],
-            "threads": ["login"],
-            "twitter": ["login", "i/flow/login"],
             "facebook": ["login", "checkpoint"],
         }
         return any(token in lowered for token in triggers.get(platform, []))
@@ -402,137 +396,6 @@ class AutoUploader:
 
         return result
 
-    # -- YouTube -------------------------------------------------------------
-
-    async def _upload_youtube(
-        self, page: Any, video_path: str, caption: str
-    ) -> dict[str, Any]:
-        """Upload a video to YouTube via the Studio upload page."""
-        result: dict[str, Any] = {"status": "failed", "url": ""}
-
-        try:
-            await page.goto(
-                "https://studio.youtube.com/upload",
-                timeout=self._upload_timeout,
-            )
-            await page.wait_for_timeout(3_000)
-
-            # redirect to signin?
-            if "signin" in page.url.lower():
-                result["status"] = "needs_login"
-                result["detail"] = "YouTube session expired, re-login required."
-                return result
-
-            # -- select file -------------------------------------------------
-            file_input = page.locator('input[type="file"]')
-            await file_input.wait_for(timeout=15_000)
-            await file_input.set_input_files(video_path)
-            await page.wait_for_timeout(8_000)  # processing time
-
-            # -- fill title --------------------------------------------------
-            title_edit = page.locator("#title-textarea, #textbox")
-            await title_edit.wait_for(timeout=30_000)
-            await title_edit.click()
-            await title_edit.fill(caption[:100])  # YT title limit
-            await page.wait_for_timeout(1_000)
-
-            # -- fill description --------------------------------------------
-            desc_edit = page.locator("#description-textarea, #textbox")
-            if await desc_edit.is_visible():
-                await desc_edit.click()
-                await desc_edit.fill(caption)
-
-            # -- step through the 3 "Next" buttons --------------------------
-            for _ in range(3):
-                next_btn = page.locator(
-                    '#next-button, div[role="button"]:has-text("Next")'
-                )
-                await next_btn.wait_for(timeout=15_000)
-                await next_btn.click()
-                await page.wait_for_timeout(2_000)
-
-            # -- visibility: Public ------------------------------------------
-            public_radio = page.locator(
-                '#public-radio-button, '
-                'tp-yt-paper-radio-button[name="PUBLIC"]'
-            )
-            if await public_radio.is_visible():
-                await public_radio.click()
-                await page.wait_for_timeout(1_000)
-
-            # -- "Publish" ---------------------------------------------------
-            done_btn = page.locator(
-                '#done-button, div[role="button"]:has-text("Publish")'
-            )
-            await done_btn.wait_for(timeout=15_000)
-            await done_btn.click()
-            await page.wait_for_timeout(5_000)
-
-            result["status"] = "uploaded"
-            result["url"] = "https://www.youtube.com/@TitanAIO"
-
-        except Exception as exc:
-            result["error"] = str(exc)
-
-        return result
-
-    # -- Threads --------------------------------------------------------------
-
-    async def _upload_threads(
-        self, page: Any, video_path: str, caption: str
-    ) -> dict[str, Any]:
-        result: dict[str, Any] = {"status": "failed", "url": ""}
-        try:
-            await page.goto("https://www.threads.net/", timeout=self._upload_timeout)
-            await page.wait_for_timeout(3000)
-            new_post = page.locator('[aria-label="New post"], div:has-text("New")')
-            await new_post.wait_for(timeout=15000)
-            await new_post.click()
-            await page.wait_for_timeout(2000)
-            file_input = page.locator('input[type="file"]')
-            await file_input.set_input_files(video_path)
-            await page.wait_for_timeout(5000)
-            caption_area = page.locator('[role="textbox"]')
-            if await caption_area.is_visible():
-                await caption_area.click()
-                await caption_area.type(caption, delay=10)
-            post_btn = page.locator('div[role="button"]:has-text("Post")')
-            if await post_btn.is_visible():
-                await post_btn.click()
-                await page.wait_for_timeout(5000)
-                result["status"] = "uploaded"
-                result["url"] = "https://www.threads.net/"
-        except Exception as exc:
-            result["error"] = str(exc)
-        return result
-
-    # -- Twitter / X ----------------------------------------------------------
-
-    async def _upload_twitter(
-        self, page: Any, video_path: str, caption: str
-    ) -> dict[str, Any]:
-        result: dict[str, Any] = {"status": "failed", "url": ""}
-        try:
-            await page.goto("https://twitter.com/compose/tweet", timeout=self._upload_timeout)
-            await page.wait_for_timeout(3000)
-            file_input = page.locator('input[type="file"]')
-            if await file_input.is_visible():
-                await file_input.set_input_files(video_path)
-                await page.wait_for_timeout(5000)
-            tweet_area = page.locator('[role="textbox"][aria-label*="text"]')
-            if await tweet_area.is_visible():
-                await tweet_area.click()
-                await tweet_area.type(caption, delay=10)
-            post_btn = page.locator('[data-testid="tweetButton"]')
-            if await post_btn.is_visible():
-                await post_btn.click()
-                await page.wait_for_timeout(5000)
-                result["status"] = "uploaded"
-                result["url"] = "https://twitter.com/"
-        except Exception as exc:
-            result["error"] = str(exc)
-        return result
-
     # -- Facebook -------------------------------------------------------------
 
     async def _upload_facebook(
@@ -613,7 +476,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--platform",
         required=True,
-        choices=["tiktok", "instagram", "youtube", "threads", "twitter", "facebook"],
+        choices=["tiktok", "instagram", "facebook", "all"],
     )
     parser.add_argument(
         "--video",
@@ -639,19 +502,40 @@ if __name__ == "__main__":
 
     async def _main() -> None:
         if args.action == "login":
-            result = await auto_login(
-                args.platform, sessions_dir=args.sessions_dir
-            )
+            if args.platform == "all":
+                results = {}
+                for p in AutoUploader.PLATFORMS:
+                    results[p] = await auto_login(p, sessions_dir=args.sessions_dir)
+                print(json.dumps(results, indent=2))
+            else:
+                result = await auto_login(
+                    args.platform, sessions_dir=args.sessions_dir
+                )
+                print(json.dumps(result, indent=2))
         else:
             if not args.video:
                 parser.error("--video is required for upload")
-            result = await auto_upload(
-                args.platform,
-                args.video,
-                args.caption,
-                hashtags=args.hashtags,
-                sessions_dir=args.sessions_dir,
-            )
-        print(json.dumps(result, indent=2))
+            if args.platform == "all":
+                import asyncio as _a
+                from Services.publisher.auto_upload import AutoUploader as _AU
+                uploader = _AU(sessions_dir=args.sessions_dir)
+
+                async def _up(plat: str) -> dict[str, Any]:
+                    try:
+                        return await uploader.upload(plat, args.video, args.caption, args.hashtags)
+                    except Exception as exc:
+                        return {"platform": plat, "status": "failed", "error": str(exc)}
+
+                results = await _a.gather(*[_up(p) for p in _AU.PLATFORMS])
+                print(json.dumps({"results": list(results)}, indent=2))
+            else:
+                result = await auto_upload(
+                    args.platform,
+                    args.video,
+                    args.caption,
+                    hashtags=args.hashtags,
+                    sessions_dir=args.sessions_dir,
+                )
+                print(json.dumps(result, indent=2))
 
     asyncio.run(_main())

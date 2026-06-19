@@ -55,11 +55,16 @@ class ScrapeAgent:
         all_results = []
 
         for p in platforms:
-            if self.use_scrapling:
+            # Try ScrapingBee first (cloud browser, zero RAM)
+            results = await self._scrape_with_scrapingbee(p, keyword, max_results // len(platforms))
+            if results:
+                all_results.extend(results)
+            elif self.use_scrapling:
                 results = await self._scrape_with_scrapling(p, keyword, max_results)
+                all_results.extend(results)
             else:
                 results = self._simulate_search(p, keyword, max_results // len(platforms))
-            all_results.extend(results)
+                all_results.extend(results)
 
         return all_results[:max_results]
 
@@ -105,6 +110,106 @@ class ScrapeAgent:
                 })
 
         return trends or self._simulate_trends(category)
+
+    # -- ScrapingBee (cloud browser, zero RAM) -------------------
+
+    async def _scrape_with_scrapingbee(self, platform: str, keyword: str, limit: int) -> list[dict]:
+        """Scrape products using ScrapingBee cloud browser."""
+        import os
+        scrapingbee_key = os.environ.get("SCRAPINGBEE_API_KEY", "")
+        if not scrapingbee_key:
+            return []
+
+        urls = {
+            "shopee": f"https://shopee.co.id/search?keyword={keyword}&sortBy=sales",
+            "tokopedia": f"https://www.tokopedia.com/search?q={keyword}&st=product&ob=5",
+        }
+        url = urls.get(platform)
+        if not url:
+            return []
+
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.get(
+                    "https://app.scrapingbee.com/api/v1/",
+                    params={
+                        "url": url,
+                        "render_js": "true",
+                        "wait": "5000",
+                    },
+                    headers={"Authorization": f"Bearer {scrapingbee_key}"},
+                )
+                if response.status_code != 200:
+                    return []
+
+                html = response.text
+                return self._parse_products_from_html(html, platform, keyword, limit)
+
+        except Exception:
+            return []
+
+    def _parse_products_from_html(self, html: str, platform: str, keyword: str, limit: int) -> list[dict]:
+        """Parse product data from HTML response."""
+        import re
+
+        products = []
+
+        # Try to extract product data from various patterns
+        # Pattern 1: JSON data in script tags
+        json_matches = re.findall(r'window\.__INITIAL_STATE__\s*=\s*({.*?});', html, re.DOTALL)
+        if json_matches:
+            try:
+                import json
+                data = json.loads(json_matches[0])
+                # Extract products from state
+                items = data.get("items", data.get("products", []))
+                for item in items[:limit]:
+                    if isinstance(item, dict):
+                        products.append({
+                            "title": item.get("name", item.get("title", keyword.title())),
+                            "price": item.get("price", 0),
+                            "rating": item.get("rating", item.get("score")),
+                            "sales": item.get("sales", item.get("sold", 0)),
+                            "url": item.get("url", ""),
+                            "platform": platform,
+                            "source": "scrapingbee",
+                        })
+            except Exception:
+                pass
+
+        # Pattern 2: Extract from HTML attributes
+        if not products:
+            # Look for product cards with various selectors
+            product_patterns = [
+                r'data-sqe="item"[^>]*>(.*?)</div>',
+                r'class="[^"]*product[^"]*"[^>]*>(.*?)</div>',
+                r'data-testid="divProductWrapper"[^>]*>(.*?)</div>',
+            ]
+            for pattern in product_patterns:
+                matches = re.findall(pattern, html, re.DOTALL)
+                if matches:
+                    for match in matches[:limit]:
+                        # Extract title
+                        title_match = re.search(r'class="[^"]*name[^"]*"[^>]*>([^<]+)', match)
+                        title = title_match.group(1).strip() if title_match else keyword.title()
+
+                        # Extract price
+                        price_match = re.search(r'(?:Rp|IDR)\s*([\d.,]+)', match)
+                        price = self._parse_price(price_match.group(0)) if price_match else 0
+
+                        if title and price > 0:
+                            products.append({
+                                "title": title,
+                                "price": price,
+                                "rating": None,
+                                "sales": 0,
+                                "url": "",
+                                "platform": platform,
+                                "source": "scrapingbee",
+                            })
+
+        return products[:limit]
 
     # -- Scrapling (real content fetching) ----------------------
 

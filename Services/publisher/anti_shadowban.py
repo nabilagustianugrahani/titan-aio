@@ -29,9 +29,6 @@ class AntiShadowban:
     PLATFORM_PEAK_HOURS = {
         "tiktok":     [7, 8, 11, 12, 18, 19, 20, 21],
         "instagram":  [6, 7, 11, 12, 17, 18, 20, 21],
-        "youtube":    [8, 9, 12, 13, 15, 16, 19, 20],
-        "threads":    [7, 8, 12, 13, 17, 18, 21, 22],
-        "twitter":    [7, 8, 12, 13, 17, 18, 20, 21],
         "facebook":   [6, 7, 11, 12, 18, 19, 20, 21],
     }
 
@@ -125,9 +122,6 @@ class AntiShadowban:
         formats = {
             "tiktok":    "{text}\n\n{hashtags}",
             "instagram": "{text}\n\n{hashtags}",
-            "youtube":   "{text}",
-            "threads":   "{text}\n\n{hashtags}",
-            "twitter":   "{text}\n{hashtags}",
             "facebook":  "{text}\n\n{hashtags}",
         }
 

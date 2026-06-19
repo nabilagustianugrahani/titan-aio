@@ -1,7 +1,13 @@
 """MCP tools for auto-uploading to social media platforms."""
 from __future__ import annotations
 
+import asyncio
 from typing import Any
+
+
+ALL_PLATFORMS = [
+    "tiktok", "instagram", "facebook",
+]
 
 
 def _get_uploader():
@@ -15,7 +21,7 @@ async def upload_to_social(
     caption: str,
     hashtags: str = "",
 ) -> dict[str, Any]:
-    """Upload a video to TikTok, Instagram, YouTube, etc."""
+    """Upload a video to TikTok, Instagram, YouTube, Shopee Feed, etc."""
     hashtag_list = [h.strip() for h in hashtags.split() if h.strip()] if hashtags else None
     uploader = _get_uploader()
     return await uploader.upload(
@@ -24,6 +30,49 @@ async def upload_to_social(
         caption=caption,
         hashtags=hashtag_list,
     )
+
+
+async def upload_to_all(
+    video_path: str,
+    caption: str,
+    hashtags: str = "",
+    platforms: str = "",
+) -> dict[str, Any]:
+    """Upload video to ALL platforms (or selected ones) in parallel.
+
+    Args:
+        video_path: Path to video file.
+        caption: Caption text.
+        hashtags: Space-separated hashtags.
+        platforms: Comma-separated platform names. Empty = all platforms.
+    """
+    target_platforms = (
+        [p.strip() for p in platforms.split(",") if p.strip()]
+        if platforms
+        else ALL_PLATFORMS
+    )
+    hashtag_list = [h.strip() for h in hashtags.split() if h.strip()] if hashtags else None
+    uploader = _get_uploader()
+
+    async def _upload_one(plat: str) -> dict[str, Any]:
+        try:
+            return await uploader.upload(
+                platform=plat,
+                video_path=video_path,
+                caption=caption,
+                hashtags=hashtag_list,
+            )
+        except Exception as exc:
+            return {"platform": plat, "status": "failed", "error": str(exc)}
+
+    results = await asyncio.gather(*[_upload_one(p) for p in target_platforms])
+
+    return {
+        "total": len(target_platforms),
+        "uploaded": sum(1 for r in results if r.get("status") == "uploaded"),
+        "failed": sum(1 for r in results if r.get("status") != "uploaded"),
+        "results": list(results),
+    }
 
 
 async def login_to_platform(platform: str) -> dict[str, Any]:

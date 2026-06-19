@@ -54,6 +54,7 @@ from MCP.tools.memory_tools import memory_store_hook, memory_find_similar_hooks,
 from MCP.tools.publisher_tools import prepare_platform_content, track_campaign_metrics
 from MCP.tools.publisher_v2_tools import (
     upload_to_social,
+    upload_to_all,
     login_to_platform,
     prepare_and_upload,
 )
@@ -81,6 +82,25 @@ from MCP.tools.dashboard_tools import (
     dashboard_list_active_campaigns,
     dashboard_list_pending_tasks,
     dashboard_query_knowledge,
+)
+from MCP.tools.batch_variant_tools import (
+    generate_batch_variants,
+    analyze_batch_performance,
+)
+from MCP.tools.lip_sync_tools import (
+    generate_lip_sync_video,
+    install_lip_sync_engine,
+)
+from MCP.tools.google_flow_tools import (
+    generate_flow_video,
+    login_google_flow,
+)
+from MCP.tools.autonomous_pipeline_tools import (
+    run_autonomous_pipeline,
+)
+from MCP.tools.cloud_browser_tools import (
+    cloud_navigate_url,
+    cloud_screenshot_url,
 )
 
 mcp = FastMCP(
@@ -494,13 +514,26 @@ async def discover_products_tool(keyword: str = "", category: str = "", platform
 
 @mcp.tool()
 async def upload_video_to_social(platform: str, video_path: str, caption: str, hashtags: str = "") -> dict:
-    """Upload a video to TikTok, Instagram, or YouTube automatically. Requires prior login."""
+    """Upload a video to TikTok, Instagram, or Facebook. Requires prior login."""
     return await upload_to_social(platform=platform, video_path=video_path, caption=caption, hashtags=hashtags)
 
 
 @mcp.tool()
+async def upload_video_to_all(video_path: str, caption: str, hashtags: str = "", platforms: str = "") -> dict:
+    """Upload video to ALL platforms in parallel (TikTok, Instagram, Facebook).
+
+    Args:
+        video_path: Path to video file.
+        caption: Caption text.
+        hashtags: Space-separated hashtags.
+        platforms: Comma-separated platform names. Empty = all.
+    """
+    return await upload_to_all(video_path=video_path, caption=caption, hashtags=hashtags, platforms=platforms)
+
+
+@mcp.tool()
 async def login_to_social_platform(platform: str) -> dict:
-    """Login to a social platform (TikTok/IG/YT). Only needed once — session saved."""
+    """Login to a social platform (TikTok/Instagram/Facebook). Only needed once — session saved."""
     return await login_to_platform(platform=platform)
 
 
@@ -532,3 +565,175 @@ async def get_product_details(product_url: str) -> dict:
 async def run_campaign_graph(url: str) -> dict:
     """Run a complete affiliate campaign using LangGraph workflow. Step-by-step AI orchestration."""
     return await run_graph_campaign(url=url)
+
+
+# ── Batch A/B Variant Tools ──────────────────────────────────────
+
+
+@mcp.tool()
+async def generate_ab_variants(
+    product_url: str,
+    product_title: str = "",
+    num_variants: int = 3,
+    platforms: list[str] | None = None,
+    duration_seconds: int = 30,
+) -> dict:
+    """Generate multiple A/B variants for a product. Each variant gets unique hook, script, style, and thumbnail.
+
+    Use for A/B testing across platforms. Returns batch with variant IDs for tracking.
+    """
+    from MCP.tools.batch_variant_tools import BatchVariantInput
+    input_data = BatchVariantInput(
+        product_url=product_url,
+        product_title=product_title,
+        num_variants=num_variants,
+        platforms=platforms or ["tiktok"],
+        duration_seconds=duration_seconds,
+    )
+    result = await generate_batch_variants(input_data)
+    return result.model_dump()
+
+
+@mcp.tool()
+async def analyze_ab_results(batch_id: str) -> dict:
+    """Analyze A/B test results and recommend the winning variant.
+
+    Returns best variant, optimization recommendations, and budget scaling suggestions.
+    """
+    from MCP.tools.batch_variant_tools import AnalyzeBatchInput
+    input_data = AnalyzeBatchInput(batch_id=batch_id)
+    result = await analyze_batch_performance(input_data)
+    return result.model_dump()
+
+
+# ── Lip Sync Tools ──────────────────────────────────────────────
+
+
+@mcp.tool()
+async def create_lip_sync_video(
+    audio_path: str,
+    face_image: str | None = None,
+    face_video: str | None = None,
+    engine: str = "auto",
+) -> dict:
+    """Generate lip sync video from audio + face image/video.
+
+    Engines: wav2lip (high quality), sadtalker (head movement), wan_native (fallback).
+    Auto-detects best available engine.
+    """
+    from MCP.tools.lip_sync_tools import LipSyncInput
+    input_data = LipSyncInput(
+        audio_path=audio_path,
+        face_image=face_image,
+        face_video=face_video,
+        engine=engine,
+    )
+    result = await generate_lip_sync_video(input_data)
+    return result.model_dump()
+
+
+@mcp.tool()
+async def setup_lip_sync(engine: str = "wav2lip") -> dict:
+    """Install a lip sync engine (Wav2Lip or SadTalker).
+
+    Downloads models and sets up the environment. Requires git, python3, pip.
+    """
+    from MCP.tools.lip_sync_tools import InstallLipSyncInput
+    input_data = InstallLipSyncInput(engine=engine)
+    result = await install_lip_sync_engine(input_data)
+    return result.model_dump()
+
+
+# ── Google Flow (VideoFX) Tools ──────────────────────────────────
+
+
+@mcp.tool()
+async def generate_video_with_flow(
+    prompt: str,
+    style: str = "cinematic",
+    duration: str = "5s",
+    aspect_ratio: str = "16:9",
+) -> dict:
+    """Generate a video using Google Flow (VideoFX).
+
+    High-quality AI video generation via labs.google/flow.
+    Free tier: 50 credits/day. Login required first.
+    """
+    from MCP.tools.google_flow_tools import FlowGenerateInput
+    input_data = FlowGenerateInput(
+        prompt=prompt,
+        style=style,
+        duration=duration,
+        aspect_ratio=aspect_ratio,
+    )
+    result = await generate_flow_video(input_data)
+    return result.model_dump()
+
+
+@mcp.tool()
+async def login_google_flow_tool() -> dict:
+    """Login to Google Flow (interactive, handles 2FA).
+
+    Run this once to save session cookies.
+    Subsequent generate calls will reuse the session.
+    """
+    result = await login_google_flow()
+    return result.model_dump()
+
+
+# ── Autonomous Pipeline ──────────────────────────────────────────
+
+
+@mcp.tool()
+async def run_full_pipeline(
+    product_url: str,
+    platforms: list[str] | None = None,
+    num_variants: int = 3,
+    include_lip_sync: bool = False,
+    auto_publish: bool = True,
+) -> dict:
+    """Run the FULL autonomous pipeline — one URL to published campaign.
+
+    Product URL → Analysis → Content → Video (Google Flow) →
+    Post-production (Kaggle) → Publish (6 platforms) → Track
+
+    All 18 agents integrated. Fully autonomous.
+    """
+    from MCP.tools.autonomous_pipeline_tools import AutonomousPipelineInput
+    input_data = AutonomousPipelineInput(
+        product_url=product_url,
+        platforms=platforms or ["tiktok", "instagram", "facebook"],
+        num_variants=num_variants,
+        include_lip_sync=include_lip_sync,
+        auto_publish=auto_publish,
+    )
+    result = await run_autonomous_pipeline(input_data)
+    return result.model_dump()
+
+
+# ── Cloud Browser (Zero RAM) ────────────────────────────────────
+
+
+@mcp.tool()
+async def cloud_browser_navigate(url: str) -> dict:
+    """Navigate to URL using cloud browser (BrowserCat → ScrapingBee).
+
+    Zero RAM on VPS. Cloud-based browser automation.
+    Free: 1,000 req/mo (BrowserCat) + 1,000 req/mo (ScrapingBee).
+    """
+    from MCP.tools.cloud_browser_tools import CloudNavigateInput
+    input_data = CloudNavigateInput(url=url)
+    result = await cloud_navigate_url(input_data)
+    return result.model_dump()
+
+
+@mcp.tool()
+async def cloud_browser_screenshot(url: str) -> dict:
+    """Take screenshot of URL using cloud browser.
+
+    Zero RAM on VPS. Cloud-based browser automation.
+    """
+    from MCP.tools.cloud_browser_tools import CloudScreenshotInput
+    input_data = CloudScreenshotInput(url=url)
+    result = await cloud_screenshot_url(input_data)
+    return result.model_dump()
