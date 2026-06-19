@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TITAN AIO — Enterprise Dashboard</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+</head>
+<body>
+  <div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo">⚡</div>
+        <div>
+          <div class="name">TITAN AIO</div>
+          <div class="version">v1.0 · Enterprise</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-item active"><span class="icon">📊</span> Overview</div>
+        <div class="nav-item"><span class="icon">📈</span> Campaigns</div>
+        <div class="nav-item"><span class="icon">🔍</span> Scraping</div>
+        <div class="nav-item"><span class="icon">🧠</span> Knowledge</div>
+        <div class="nav-item"><span class="icon">📋</span> Tasks</div>
+        <div class="nav-item"><span class="icon">⚙️</span> Settings</div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span style="font-size:12px;color:var(--accent-green)">Operational</span>
+        </div>
+        <div id="last-update" style="font-size:11px;color:var(--text-muted)">Loading...</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+
+      <!-- Loading State -->
+      <div id="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p style="font-size:14px;color:var(--text-muted)">Loading dashboard...</p>
+      </div>
+
+      <!-- Dashboard Content (hidden initially) -->
+      <div id="dashboard" style="display:none">
+
+        <!-- Header -->
+        <div class="main-header">
+          <h1>Overview</h1>
+          <p>Real-time affiliate intelligence summary</p>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid fade-in">
+          <div class="stat-card revenue">
+            <div class="stat-icon">💰</div>
+            <div class="stat-label">Total Revenue</div>
+            <div class="stat-value" id="stat-revenue">—</div>
+            <div class="stat-sub">Across all campaigns</div>
+          </div>
+          <div class="stat-card campaigns">
+            <div class="stat-icon">📊</div>
+            <div class="stat-label">Active Campaigns</div>
+            <div class="stat-value" id="stat-campaigns">—</div>
+            <div class="stat-sub">Currently running</div>
+          </div>
+          <div class="stat-card tasks">
+            <div class="stat-icon">📋</div>
+            <div class="stat-label">Pending Tasks</div>
+            <div class="stat-value" id="stat-tasks">—</div>
+            <div class="stat-sub">Awaiting action</div>
+          </div>
+          <div class="stat-card knowledge">
+            <div class="stat-icon">🧠</div>
+            <div class="stat-label">Knowledge Base</div>
+            <div class="stat-value" id="stat-knowledge">—</div>
+            <div class="stat-sub">Insights collected</div>
+          </div>
+          <div class="stat-card scraped">
+            <div class="stat-icon">🔍</div>
+            <div class="stat-label">Scraped Products</div>
+            <div class="stat-value" id="stat-scraped">—</div>
+            <div class="stat-sub">Ready to promote</div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-row fade-in">
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3>📈 Revenue (7 days)</h3>
+              <span class="panel-count">IDR</span>
+            </div>
+            <canvas id="revenueChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <div class="chart-header">
+              <h3>🧠 Knowledge Distribution</h3>
+              <span class="panel-count" id="knowledge-count">0</span>
+            </div>
+            <canvas id="categoryChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+
+          <!-- Left: Campaigns & Tasks -->
+          <div>
+
+            <!-- Campaigns -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>📈 Recent Campaigns</h3>
+                <span class="panel-count" id="campaign-count">0</span>
+              </div>
+              <div class="panel-body">
+                <table class="data-table" id="campaigns-table">
+                  <thead>
+                    <tr><th>Product</th><th>Revenue</th><th>Status</th><th>Platform</th></tr>
+                  </thead>
+                  <tbody id="campaigns-body">
+                    <tr><td colspan="4"><div class="empty-state"><div class="icon">📦</div><p>No campaigns yet</p></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Tasks -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>📋 Pending Tasks</h3>
+                <span class="panel-count" id="task-count">0</span>
+              </div>
+              <div class="panel-body">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Task</th><th>Priority</th><th>Status</th></tr>
+                  </thead>
+                  <tbody id="tasks-body">
+                    <tr><td colspan="3"><div class="empty-state"><div class="icon">✅</div><p>No pending tasks</p></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Right: Knowledge & Actions -->
+          <div>
+
+            <!-- Knowledge Categories -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>🧠 Knowledge Tags</h3>
+                <span class="panel-count" id="knowledge-tag-count">0</span>
+              </div>
+              <div class="panel-body">
+                <div id="knowledge-categories">
+                  <div class="empty-state"><div class="icon">📚</div><p>No knowledge entries</p></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>⚡ Quick Actions</h3>
+              </div>
+              <div class="panel-body">
+                <div class="btn-group">
+                  <button class="btn btn-primary" onclick="refreshData()">🔄 Sync Now</button>
+                  <button class="btn btn-primary" onclick="triggerCycle()">🚀 Run Campaign</button>
+                  <a href="/health" class="btn">❤️ Health</a>
+                  <a href="/" class="btn">🏠 API</a>
+                </div>
+                <div class="divider"></div>
+                <div id="sync-info" style="font-size:12px;color:var(--text-muted)">Click sync to pull latest data from Notion</div>
+                <div id="cycle-result" style="font-size:12px;color:var(--text-muted);margin-top:8px"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="breadcrumb">
+          <span>⚡ TITAN AIO</span>
+          <span>·</span>
+          <span>Autonomous Affiliate Intelligence Operating System</span>
+          <span style="margin-left:auto">45 MCP Tools · 20 Agents · 90 Tests</span>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script>
+    let revenueChartInstance = null;
+    let categoryChartInstance = null;
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/dashboard/stats');
+        const data = await res.json();
+        renderStats(data);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        document.getElementById('last-update').textContent = 'Last updated: ' + new Date().toLocaleTimeString('id-ID');
+        loadCharts();
+      } catch (err) {
+        document.getElementById('loading').innerHTML = `
+          <div style="color:var(--accent-red);font-size:32px;margin-bottom:12px">⚠️</div>
+          <p style="color:var(--accent-red);font-size:14px">Failed to load dashboard</p>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:4px">${err.message}</p>
+          <button class="btn" style="margin-top:16px" onclick="loadDashboard()">↻ Retry</button>`;
+      }
+    }
+
+    function renderStats(data) {
+      document.getElementById('stat-revenue').textContent = formatRp(data.total_revenue);
+      document.getElementById('stat-campaigns').textContent = data.active_campaigns;
+      document.getElementById('stat-tasks').textContent = data.pending_tasks;
+      document.getElementById('stat-knowledge').textContent = data.total_knowledge;
+      document.getElementById('stat-scraped').textContent = data.scraped_products || 0;
+
+      document.getElementById('campaign-count').textContent = (data.recent_campaigns || []).length;
+      document.getElementById('task-count').textContent = (data.recent_tasks || []).length;
+      document.getElementById('knowledge-tag-count').textContent = data.total_knowledge || 0;
+
+      const cBody = document.getElementById('campaigns-body');
+      if (data.recent_campaigns && data.recent_campaigns.length > 0) {
+        cBody.innerHTML = data.recent_campaigns.map(c => `
+          <tr>
+            <td class="cell-primary">${c.name || 'N/A'}</td>
+            <td>${formatRp(c.revenue || 0)}</td>
+            <td><span class="badge badge-${(c.status || 'active').toLowerCase()}">${c.status || 'Active'}</span></td>
+            <td style="color:var(--text-muted)">${c.platform || '—'}</td>
+          </tr>
+        `).join('');
+      }
+
+      const tBody = document.getElementById('tasks-body');
+      if (data.recent_tasks && data.recent_tasks.length > 0) {
+        tBody.innerHTML = data.recent_tasks.map(t => {
+          const pColor = t.priority === 'High' ? 'var(--accent-red)' : t.priority === 'Medium' ? 'var(--accent-orange)' : 'var(--text-muted)';
+          const statusKey = (t.status || 'pending').toLowerCase().replace(/\s+/g, '');
+          return `<tr>
+            <td class="cell-primary">${t.title || 'N/A'}</td>
+            <td style="color:${pColor};font-weight:500">${t.priority || '—'}</td>
+            <td><span class="badge badge-${statusKey}">${t.status || 'Pending'}</span></td>
+          </tr>`;
+        }).join('');
+      }
+
+      const catDiv = document.getElementById('knowledge-categories');
+      const entries = data.categories || {};
+      if (Object.keys(entries).length > 0) {
+        catDiv.innerHTML = Object.entries(entries).sort((a, b) => b[1] - a[1]).map(([cat, count]) =>
+          `<span class="tag">${cat} (${count})</span>`
+        ).join('');
+      }
+
+      document.getElementById('sync-info').textContent =
+        `✅ ${data.total_knowledge} knowledge entries · ${data.pending_tasks} tasks · ${data.active_campaigns} active campaigns`;
+    }
+
+    async function loadCharts() {
+      try {
+        const res = await fetch('/api/dashboard/chart');
+        const chartData = await res.json();
+
+        if (revenueChartInstance) revenueChartInstance.destroy();
+        const ctx = document.getElementById('revenueChart').getContext('2d');
+        revenueChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: chartData.labels,
+            datasets: [{
+              label: 'Revenue',
+              data: chartData.datasets[0].data,
+              backgroundColor: 'rgba(108,92,231,0.3)',
+              borderColor: '#6c5ce7',
+              borderWidth: 1,
+              borderRadius: 4,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return 'Rp ' + context.parsed.y.toLocaleString('id-ID');
+                  }
+                }
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(255,255,255,0.04)' },
+                ticks: {
+                  color: '#606080',
+                  callback: function(value) {
+                    if (value >= 1000000) return 'Rp' + (value / 1000000).toFixed(1) + 'jt';
+                    if (value >= 1000) return 'Rp' + (value / 1000).toFixed(0) + 'rb';
+                    return 'Rp' + value;
+                  }
+                }
+              },
+              x: {
+                grid: { display: false },
+                ticks: { color: '#606080' }
+              }
+            }
+          }
+        });
+
+        // Knowledge distribution pie chart
+        const statsRes = await fetch('/api/dashboard/stats');
+        const stats = await statsRes.json();
+        const cats = stats.categories || {};
+
+        if (categoryChartInstance) categoryChartInstance.destroy();
+        const colors = ['#6c5ce7', '#4a7dff', '#00cec9', '#00b894', '#fdcb6e', '#e17055', '#fd79a8'];
+        const catLabels = Object.keys(cats);
+        const catValues = Object.values(cats);
+        const catColors = catLabels.map((_, i) => colors[i % colors.length]);
+
+        const ctx2 = document.getElementById('categoryChart').getContext('2d');
+        categoryChartInstance = new Chart(ctx2, {
+          type: 'doughnut',
+          data: {
+            labels: catLabels,
+            datasets: [{ data: catValues, backgroundColor: catColors, borderWidth: 0 }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: '#9090b0',
+                  padding: 8,
+                  font: { size: 10 },
+                  boxWidth: 10,
+                  boxHeight: 10,
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                    const pct = ((context.parsed / total) * 100).toFixed(1);
+                    return context.label + ': ' + context.parsed + ' (' + pct + '%)';
+                  }
+                }
+              }
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Chart load error:', e);
+      }
+    }
+
+    function formatRp(n) {
+      if (!n || n === 0) return 'Rp 0';
+      return 'Rp ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    async function refreshData() {
+      const el = document.getElementById('sync-info');
+      el.textContent = '🔄 Syncing from Notion...';
+      try {
+        const res = await fetch('/api/dashboard/refresh');
+        const d = await res.json();
+        if (d.status === 'ok') {
+          el.textContent = `✅ Synced: ${d.campaigns} campaigns, ${d.tasks} tasks, ${d.knowledge} entries`;
+          loadDashboard();
+        } else {
+          el.textContent = '❌ ' + d.message;
+        }
+      } catch (e) {
+        el.textContent = '❌ Sync failed';
+      }
+    }
+
+    async function triggerCycle() {
+      const el = document.getElementById('cycle-result');
+      el.textContent = '🚀 Running autonomous cycle...';
+      try {
+        const res = await fetch('/api/run/cycle');
+        const d = await res.json();
+        if (d.status === 'complete') {
+          el.textContent = '✅ Campaign ' + (d.campaign_id || '').slice(0, 8) + '... created in ' + (d.steps || []).length + ' steps';
+          loadDashboard();
+        } else {
+          el.textContent = '❌ ' + (d.message || d.status);
+        }
+      } catch (e) {
+        el.textContent = '❌ Error';
+      }
+    }
+
+    loadDashboard();
+    setInterval(loadDashboard, 30000);
+  </script>
+</body>
+</html>
