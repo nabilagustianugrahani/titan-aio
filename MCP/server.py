@@ -132,6 +132,16 @@ from MCP.tools.affiliate_optimizer_tools import optimize_affiliate as _optimize_
 from MCP.tools.seo_tools import seo_optimize as _seo_optimize
 from MCP.tools.sentiment_tools import monitor_sentiment as _monitor_sentiment
 from MCP.tools.pipeline_tools import get_pipeline_health as _get_pipeline_health
+from MCP.tools.content_calendar_tools import schedule_content_post, get_content_calendar, find_best_posting_times, cancel_scheduled_post, reschedule_post, get_calendar_stats
+from MCP.tools.webhook_tools import register_webhook_alert, send_webhook_alert, list_webhook_alerts, get_alert_history, delete_webhook_alert
+from MCP.tools.infra_tools import check_api_rate_limit, acquire_api_slot, get_api_rate_usage, reset_api_rate_limit, cache_get, cache_set, cache_stats
+from MCP.tools.audit_tools import log_audit_event, query_audit_log, get_audit_stats
+from MCP.tools.compliance_tools import check_content_compliance, create_niche_campaign
+from MCP.tools.ml_scorer_tools import ml_score_content, ml_batch_score
+from MCP.tools.cross_platform_tools import record_platform_metrics, generate_cross_platform_report, get_platform_comparison
+from MCP.tools.versioning_tools import create_content_version, get_content_versions, revert_content_version, compare_content_versions, update_version_score
+from MCP.tools.batch_processor_tools import create_batch_job, run_batch_job, get_batch_status, pause_batch_job, list_batch_jobs, get_batch_stats
+from MCP.tools.dynamic_pricing_tools import analyze_product_pricing, bulk_price_analysis, get_pricing_recommendations, get_pricing_stats
 
 mcp = FastMCP(
     "TITAN AIO",
@@ -1287,3 +1297,225 @@ async def track_brand_sentiment(
 async def get_self_healing_status(pipeline_id: str = "") -> dict:
     """Check self-healing pipeline status, failures, and recoveries."""
     return await _get_pipeline_health(pipeline_id=pipeline_id)
+
+
+# ── Content Calendar ─────────────────────────────────────────────
+
+
+@mcp.tool()
+async def schedule_content_post_tool(platform: str, content: str, scheduled_time: str, hashtags: str = "", campaign_id: str = "") -> dict:
+    """Schedule a content post for a specific platform and time."""
+    return await schedule_content_post(platform=platform, content=content, scheduled_time=scheduled_time, hashtags=hashtags, campaign_id=campaign_id)
+
+
+@mcp.tool()
+async def get_content_calendar_tool(platform: str = "", days: int = 7) -> list[dict]:
+    """Get scheduled posts for the next N days."""
+    return await get_content_calendar(platform=platform, days=days)
+
+
+@mcp.tool()
+async def find_best_posting_times_tool(platform: str = "tiktok", count: int = 5) -> list[dict]:
+    """Find optimal posting times for a platform based on engagement data."""
+    return await find_best_posting_times(platform=platform, count=count)
+
+
+@mcp.tool()
+async def cancel_scheduled_post_tool(post_id: str) -> dict:
+    """Cancel a scheduled post."""
+    return await cancel_scheduled_post(post_id=post_id)
+
+
+@mcp.tool()
+async def reschedule_post_tool(post_id: str, new_time: str) -> dict:
+    """Reschedule a post to a new time."""
+    return await reschedule_post(post_id=post_id, new_time=new_time)
+
+
+@mcp.tool()
+async def get_calendar_stats_tool() -> dict:
+    """Get calendar statistics — total posts, by status, by platform."""
+    return await get_calendar_stats()
+
+
+# ── Webhook Alerts ──────────────────────────────────────────────
+
+
+@mcp.tool()
+async def register_webhook_tool(name: str, url: str, platform: str = "discord", events: str = "") -> dict:
+    """Register a webhook for notifications (Discord/Slack/Telegram)."""
+    return await register_webhook_alert(name=name, url=url, platform=platform, events=events)
+
+
+@mcp.tool()
+async def send_alert_tool(event_type: str, title: str, message: str, severity: str = "info") -> dict:
+    """Send an alert to all matching webhooks."""
+    return await send_webhook_alert(event_type=event_type, title=title, message=message, severity=severity)
+
+
+@mcp.tool()
+async def list_webhooks_tool() -> list[dict]:
+    """List all registered webhooks."""
+    return await list_webhook_alerts()
+
+
+@mcp.tool()
+async def get_alert_history_tool(limit: int = 20) -> list[dict]:
+    """Get recent alert history."""
+    return await get_alert_history(limit=limit)
+
+
+# ── API Rate Limiter & Cache ────────────────────────────────────
+
+
+@mcp.tool()
+async def check_rate_limit(provider: str) -> dict:
+    """Check if an API provider has available rate limit capacity."""
+    return await check_api_rate_limit(provider=provider)
+
+
+@mcp.tool()
+async def acquire_rate_slot(provider: str) -> dict:
+    """Acquire a rate limit slot before making an API call."""
+    return await acquire_api_slot(provider=provider)
+
+
+@mcp.tool()
+async def get_rate_usage() -> dict:
+    """Get rate limit usage for all providers."""
+    return await get_api_rate_usage()
+
+
+@mcp.tool()
+async def get_cache(content_type: str, key_params: str) -> dict | None:
+    """Get cached content by type and key parameters."""
+    return await cache_get(content_type=content_type, key_params=key_params)
+
+
+@mcp.tool()
+async def set_cache(content_type: str, key_params: str, content: str) -> dict:
+    """Store content in cache."""
+    return await cache_set(content_type=content_type, key_params=key_params, content=content)
+
+
+@mcp.tool()
+async def get_cache_stats() -> dict:
+    """Get cache statistics."""
+    return await cache_stats()
+
+
+# ── Audit Logger ────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def log_audit(action: str, actor: str = "system", target: str = "", details: str = "") -> dict:
+    """Log an audit event for tracking."""
+    return await log_audit_event(action=action, actor=actor, target=target, details=details)
+
+
+@mcp.tool()
+async def query_audit(action: str = "", actor: str = "", limit: int = 50) -> list[dict]:
+    """Query audit log entries."""
+    return await query_audit_log(action=action, actor=actor, limit=limit)
+
+
+# ── Compliance Checker ──────────────────────────────────────────
+
+
+@mcp.tool()
+async def check_compliance(content: str, platform: str = "tiktok", has_affiliate: bool = True) -> dict:
+    """Check content for platform compliance (char limits, disclosures, banned words)."""
+    return await check_content_compliance(content=content, platform=platform, has_affiliate=has_affiliate)
+
+
+@mcp.tool()
+async def create_niche_campaign_tool(niche: str, name: str, platforms: str = "tiktok,instagram", budget: float = 0.0) -> dict:
+    """Create a multi-niche campaign manager entry."""
+    return await create_niche_campaign(niche=niche, name=name, platforms=platforms, budget=budget)
+
+
+# ── ML Content Scorer ──────────────────────────────────────────
+
+
+@mcp.tool()
+async def ml_score(content: str, platform: str = "tiktok", niche: str = "general") -> dict:
+    """ML-based content scoring with feature breakdown, risk factors, and improvement suggestions."""
+    return await ml_score_content(content=content, platform=platform, niche=niche)
+
+
+# ── Cross-Platform Analytics ────────────────────────────────────
+
+
+@mcp.tool()
+async def record_metrics(platform: str, impressions: int = 0, reach: int = 0, engagement: int = 0, clicks: int = 0, conversions: int = 0, revenue: float = 0.0, ad_spend: float = 0.0) -> dict:
+    """Record metrics for a platform."""
+    return await record_platform_metrics(platform=platform, impressions=impressions, reach=reach, engagement=engagement, clicks=clicks, conversions=conversions, revenue=revenue, ad_spend=ad_spend)
+
+
+@mcp.tool()
+async def get_cross_platform_report(campaign_id: str = "") -> dict:
+    """Generate unified cross-platform analytics report."""
+    return await generate_cross_platform_report(campaign_id=campaign_id)
+
+
+# ── Content Versioning ──────────────────────────────────────────
+
+
+@mcp.tool()
+async def save_content_version(content_type: str, content_id: str, content: str, author: str = "system", notes: str = "") -> dict:
+    """Create a new version of content."""
+    return await create_content_version(content_type=content_type, content_id=content_id, content=content, author=author, notes=notes)
+
+
+@mcp.tool()
+async def get_version_history(content_type: str, content_id: str) -> list[dict]:
+    """Get all versions of a content piece."""
+    return await get_content_versions(content_type=content_type, content_id=content_id)
+
+
+@mcp.tool()
+async def revert_to_version(content_type: str, content_id: str, version_id: str) -> dict:
+    """Revert content to a specific version."""
+    return await revert_content_version(content_type=content_type, content_id=content_id, version_id=version_id)
+
+
+# ── Batch Processor ─────────────────────────────────────────────
+
+
+@mcp.tool()
+async def create_batch(items: str, concurrency: int = 3, delay: float = 1.0) -> dict:
+    """Create a batch processing job."""
+    return await create_batch_job(items=items, concurrency=concurrency, delay=delay)
+
+
+@mcp.tool()
+async def run_batch(job_id: str) -> dict:
+    """Run a batch processing job."""
+    return await run_batch_job(job_id=job_id)
+
+
+@mcp.tool()
+async def get_batch_status_tool(job_id: str) -> dict:
+    """Get batch job status and progress."""
+    return await get_batch_status(job_id=job_id)
+
+
+@mcp.tool()
+async def list_batches(status: str = "") -> list[dict]:
+    """List all batch jobs."""
+    return await list_batch_jobs(status=status)
+
+
+# ── Dynamic Pricing ─────────────────────────────────────────────
+
+
+@mcp.tool()
+async def analyze_pricing(product_id: str, base_price: float, commission_rate: float, market_avg: float = 0.0, competitor_avg: float = 0.0, demand_score: float = 0.5, supply_score: float = 0.5) -> dict:
+    """Analyze optimal pricing for a product."""
+    return await analyze_product_pricing(product_id=product_id, base_price=base_price, commission_rate=commission_rate, market_avg=market_avg, competitor_avg=competitor_avg, demand_score=demand_score, supply_score=supply_score)
+
+
+@mcp.tool()
+async def get_pricing_recommendations_tool() -> list[dict]:
+    """Get pricing recommendations for all analyzed products."""
+    return await get_pricing_recommendations()
