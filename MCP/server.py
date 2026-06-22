@@ -153,6 +153,7 @@ from MCP.tools.advanced_tools import (
     add_brand_to_watch, record_brand_mention, get_brand_mentions, get_sentiment_summary,
     find_influencers, add_affiliate_account, record_account_earnings, list_affiliate_accounts, get_earnings_summary,
 )
+from MCP.tools.websocket_tools import ws_broadcast_metric, ws_broadcast_alert, ws_broadcast_pipeline, ws_get_connections
 
 mcp = FastMCP(
     "TITAN AIO",
@@ -1761,3 +1762,30 @@ async def list_accounts(platform: str = "") -> list[dict]:
 async def earnings_summary() -> dict:
     """Get total earnings across all accounts."""
     return await get_earnings_summary()
+
+
+# ── WebSocket Dashboard ─────────────────────────────────────────
+
+
+@mcp.tool()
+async def ws_broadcast_metric_tool(metric_type: str, data: str) -> dict:
+    """Broadcast a metric update to all connected WebSocket clients."""
+    return await ws_broadcast_metric(metric_type=metric_type, data=data)
+
+
+@mcp.tool()
+async def ws_broadcast_alert_tool(severity: str, title: str, message: str) -> dict:
+    """Broadcast an alert to all connected WebSocket clients."""
+    return await ws_broadcast_alert(severity=severity, title=title, message=message)
+
+
+@mcp.tool()
+async def ws_broadcast_pipeline_tool(pipeline_id: str, status: str, phase: str = "", progress: float = 0.0) -> dict:
+    """Broadcast pipeline status to all connected WebSocket clients."""
+    return await ws_broadcast_pipeline(pipeline_id=pipeline_id, status=status, phase=phase, progress=progress)
+
+
+@mcp.tool()
+async def ws_connections() -> dict:
+    """Get WebSocket connection count and buffer status."""
+    return await ws_get_connections()

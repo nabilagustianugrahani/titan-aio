@@ -78,6 +78,11 @@ class Settings(BaseSettings):
     MONGODB_CLIENT_ID: str = ""
     MONGODB_CLIENT_SECRET: str = ""
 
+    # Timezone — VPS is IST (UTC+5:30), user is WIB (UTC+7)
+    # All timestamps stored in UTC, displayed in user's timezone
+    VPS_TIMEZONE: str = "Asia/Kolkata"  # VPS timezone
+    USER_TIMEZONE: str = "Asia/Jakarta"  # User timezone (WIB, UTC+7)
+
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def resolve_database_url(cls, v: str) -> str:

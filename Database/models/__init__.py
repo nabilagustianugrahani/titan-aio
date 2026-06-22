@@ -194,3 +194,419 @@ class ProductProfile(Base, TimestampMixin):
     review_intelligence: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     competitor_intelligence: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     offer_strategy: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+
+class ViralPrediction(Base, TimestampMixin):
+    __tablename__ = "viral_predictions"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    campaign_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    hook: Mapped[str] = mapped_column(Text, nullable=False)
+    script: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    predicted_reach: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    predicted_engagement_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    best_posting_time: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    optimization_tips: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    feature_breakdown: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+
+class TrendRecord(Base, TimestampMixin):
+    __tablename__ = "trend_records"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    niche: Mapped[str] = mapped_column(String(128), nullable=False)
+    topic: Mapped[str] = mapped_column(String(256), nullable=False)
+    velocity: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    relevance_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    urgency: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    hashtags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    engagement_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class CompetitorProfile(Base, TimestampMixin):
+    __tablename__ = "competitor_profiles"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    followers: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    avg_engagement: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    posting_frequency: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    top_hooks: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    content_gaps: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    threat_level: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    recommendations: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    growth_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class ContentRemix(Base, TimestampMixin):
+    __tablename__ = "content_remixes"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    source_content: Mapped[str] = mapped_column(Text, nullable=False)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    format: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    content_text: Mapped[str] = mapped_column(Text, nullable=False)
+    char_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    viral_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    hashtags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    cta_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class ContentVersion(Base, TimestampMixin):
+    __tablename__ = "content_versions"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    content_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    content_text: Mapped[str] = mapped_column(Text, nullable=False)
+    version_number: Mapped[int] = mapped_column(Integer, default=1)
+    author: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    tags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    performance_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    is_current: Mapped[bool] = mapped_column(Integer, default=1)
+
+
+class ScheduledPost(Base, TimestampMixin):
+    __tablename__ = "scheduled_posts"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_text: Mapped[str] = mapped_column(Text, nullable=False)
+    scheduled_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    campaign_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    hashtags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    media_urls: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+
+
+class ABTestResult(Base, TimestampMixin):
+    __tablename__ = "ab_test_results"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    test_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    niche: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="running")
+    confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    winner_variant_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    variants: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+
+
+class ComplianceCheck(Base, TimestampMixin):
+    __tablename__ = "compliance_checks"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    content_text: Mapped[str] = mapped_column(Text, nullable=False)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    passed: Mapped[bool] = mapped_column(Integer, default=1)
+    score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    issues: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    affiliate_disclosed: Mapped[bool] = mapped_column(Integer, default=0)
+
+
+class AuditLogEntry(Base, TimestampMixin):
+    __tablename__ = "audit_log"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    action: Mapped[str] = mapped_column(String(128), nullable=False)
+    actor: Mapped[str] = mapped_column(String(128), nullable=False)
+    target: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    details: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
+
+class AlertRule(Base, TimestampMixin):
+    __tablename__ = "alert_rules"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    metric: Mapped[str] = mapped_column(String(128), nullable=False)
+    condition: Mapped[str] = mapped_column(String(32), nullable=False)
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    platform: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    campaign_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    enabled: Mapped[bool] = mapped_column(Integer, default=1)
+    cooldown_minutes: Mapped[int] = mapped_column(Integer, default=60)
+
+
+class PerformanceAlert(Base, TimestampMixin):
+    __tablename__ = "performance_alerts"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    rule_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    rule_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    metric: Mapped[str] = mapped_column(String(128), nullable=False)
+    current_value: Mapped[float] = mapped_column(Float, nullable=False)
+    previous_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    threshold: Mapped[float] = mapped_column(Float, nullable=False)
+    condition: Mapped[str] = mapped_column(String(32), nullable=False)
+    message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    severity: Mapped[str] = mapped_column(String(32), default="info")
+    platform: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    campaign_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    acknowledged: Mapped[bool] = mapped_column(Integer, default=0)
+
+
+class RevenueDataPoint(Base, TimestampMixin):
+    __tablename__ = "revenue_data_points"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    campaign_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    platform: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    revenue: Mapped[float] = mapped_column(Float, default=0.0)
+    ad_spend: Mapped[float] = mapped_column(Float, default=0.0)
+    clicks: Mapped[int] = mapped_column(Integer, default=0)
+    conversions: Mapped[int] = mapped_column(Integer, default=0)
+    net_profit: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+class RevenueForecast(Base, TimestampMixin):
+    __tablename__ = "revenue_forecasts"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    period: Mapped[str] = mapped_column(String(64), nullable=False)
+    predicted_revenue: Mapped[float] = mapped_column(Float, default=0.0)
+    predicted_roi: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    trend: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    daily_average: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    best_day: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    worst_day: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    recommendations: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+
+
+class VoiceProfile(Base, TimestampMixin):
+    __tablename__ = "voice_profiles"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    style: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    characteristics: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    sample_duration: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    languages: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    usage_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class WebhookConfig(Base, TimestampMixin):
+    __tablename__ = "webhook_configs"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    platform: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    events: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Integer, default=1)
+
+
+class TelegramConfig(Base, TimestampMixin):
+    __tablename__ = "telegram_configs"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    bot_token: Mapped[str] = mapped_column(String(256), nullable=False)
+    chat_ids: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Integer, default=1)
+
+
+class AffiliateAccount(Base, TimestampMixin):
+    __tablename__ = "affiliate_accounts"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="active")
+    commission_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_earnings: Mapped[float] = mapped_column(Float, default=0.0)
+    total_clicks: Mapped[int] = mapped_column(Integer, default=0)
+    total_conversions: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class BrandMention(Base, TimestampMixin):
+    __tablename__ = "brand_mentions"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    brand: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    text_content: Mapped[str] = mapped_column(Text, nullable=False)
+    sentiment: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    author_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class InfluencerProfile(Base, TimestampMixin):
+    __tablename__ = "influencer_profiles"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(256), nullable=False)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    niche: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    followers: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    engagement_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    avg_likes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    avg_comments: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    content_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    collaboration_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    relevance_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class CompetitorWatch(Base, TimestampMixin):
+    __tablename__ = "competitor_watches"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    competitor_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="active")
+    metrics: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    alerts: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+
+
+class ContentIdea(Base, TimestampMixin):
+    __tablename__ = "content_ideas"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    title: Mapped[str] = mapped_column(String(256), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    platform: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    content_type: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    hook_suggestion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    estimated_engagement: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    difficulty: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    tags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    niche: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    cta_suggestion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class PricingAnalysis(Base, TimestampMixin):
+    __tablename__ = "pricing_analyses"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    product_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    base_price: Mapped[float] = mapped_column(Float, nullable=False)
+    commission_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    market_avg: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    competitor_avg: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    demand_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    supply_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    recommended_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    recommended_commission: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    strategy: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+
+
+class BudgetAllocation(Base, TimestampMixin):
+    __tablename__ = "budget_allocations"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    campaign_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    current_budget: Mapped[float] = mapped_column(Float, default=0.0)
+    recommended_budget: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    roi: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    priority: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class BatchJob(Base, TimestampMixin):
+    __tablename__ = "batch_jobs"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    total_items: Mapped[int] = mapped_column(Integer, default=0)
+    processed: Mapped[int] = mapped_column(Integer, default=0)
+    successful: Mapped[int] = mapped_column(Integer, default=0)
+    failed: Mapped[int] = mapped_column(Integer, default=0)
+    items: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    results: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    errors: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    concurrency: Mapped[int] = mapped_column(Integer, default=1)
+    delay_between: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class AutoReport(Base, TimestampMixin):
+    __tablename__ = "auto_reports"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    report_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    period: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    sections: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+
+
+class PipelineRun(Base, TimestampMixin):
+    __tablename__ = "pipeline_runs"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    pipeline_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+    product_url: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="pending")
+    features_used: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    started_at_iso: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    completed_at_iso: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    errors: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    hooks_count: Mapped[int] = mapped_column(Integer, default=0)
+    scripts_count: Mapped[int] = mapped_column(Integer, default=0)
+    video_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SmartScheduleSlot(Base, TimestampMixin):
+    __tablename__ = "smart_schedule_slots"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    hour: Mapped[int] = mapped_column(Integer, nullable=False)
+    day_of_week: Mapped[int] = mapped_column(Integer, nullable=False)
+    avg_engagement: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    post_count: Mapped[int] = mapped_column(Integer, default=0)
+    score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+
+class CrossPlatformMetric(Base, TimestampMixin):
+    __tablename__ = "cross_platform_metrics"
+    __table_args__ = ({"extend_existing": True},)
+
+    id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False)
+    campaign_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    impressions: Mapped[int] = mapped_column(Integer, default=0)
+    reach: Mapped[int] = mapped_column(Integer, default=0)
+    engagement: Mapped[int] = mapped_column(Integer, default=0)
+    clicks: Mapped[int] = mapped_column(Integer, default=0)
+    conversions: Mapped[int] = mapped_column(Integer, default=0)
+    revenue: Mapped[float] = mapped_column(Float, default=0.0)
+    ad_spend: Mapped[float] = mapped_column(Float, default=0.0)
+    engagement_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    ctr: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    conversion_rate: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    roi: Mapped[Optional[float]] = mapped_column(Float, nullable=True)

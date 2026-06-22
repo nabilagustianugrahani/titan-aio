@@ -1,0 +1,42 @@
+# Titan AIO — Production Dockerfile
+# Optimized for low-memory VPS (859MB RAM)
+
+FROM python:3.11-slim AS base
+
+# Prevent Python from writing .pyc files and enable unbuffered output
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+
+WORKDIR /app
+
+# Install system dependencies (minimal)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files first (Docker cache optimization)
+COPY pyproject.toml uv.lock ./
+
+# Install uv and dependencies
+RUN pip install --no-cache-dir uv && \
+    uv sync --frozen --no-dev --no-install-project
+
+# Copy application code
+COPY . .
+
+# Install the project itself
+RUN uv sync --frozen --no-dev
+
+# Create data directory
+RUN mkdir -p /app/data
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Expose port
+EXPOSE 8080
+
+# Run with limited workers for low memory
+CMD ["uv", "run", "uvicorn", "titan.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--limit-concurrency", "50", "--timeout-keep-alive", "30"]
