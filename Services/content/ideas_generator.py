@@ -13,7 +13,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 # ── Models ──────────────────────────────────────────────────────────────
@@ -300,6 +300,14 @@ _NICHE_TEMPLATES: dict[str, list[dict]] = {
             "difficulty": "easy",
             "engagement": "High",
             "cta": "Link di bio kalau mau coba!",
+        },
+        {
+            "title": "Grocery Haul on a Budget",
+            "type": "reel",
+            "hook": "I fed my family for a week with Rp100rb",
+            "difficulty": "easy",
+            "engagement": "High",
+            "cta": "Save this budget shopping list!",
         },
     ],
     "health_fitness": [

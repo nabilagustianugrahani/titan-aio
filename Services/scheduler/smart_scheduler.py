@@ -11,9 +11,7 @@ from __future__ import annotations
 import math
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Optional
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 # ── Models ──────────────────────────────────────────────────────────────
