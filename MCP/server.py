@@ -154,6 +154,18 @@ from MCP.tools.advanced_tools import (
     find_influencers, add_affiliate_account, record_account_earnings, list_affiliate_accounts, get_earnings_summary,
 )
 from MCP.tools.websocket_tools import ws_broadcast_metric, ws_broadcast_alert, ws_broadcast_pipeline, ws_get_connections
+from MCP.tools.shopee_tools import shopee_search_products, shopee_get_product, shopee_get_trending, shopee_find_high_commission
+from MCP.tools.social_api_tools import tiktok_trending, tiktok_search, tiktok_analyze, tiktok_creator, social_search, social_trending, social_brand_mentions
+from MCP.tools.ecommerce_tools import search_products, get_product_details, get_trending_products, compare_products, find_affiliate_products
+from MCP.tools.shopee_tools import shopee_search_products, shopee_get_product, shopee_get_trending, shopee_find_high_commission
+from MCP.tools.social_api_tools import tiktok_trending, tiktok_search, tiktok_analyze, tiktok_creator, social_search, social_trending, social_brand_mentions
+from MCP.tools.ecommerce_tools import search_products, get_product_details, get_trending_products, compare_products, find_affiliate_products
+from MCP.tools.shopee_tools import shopee_search_products, shopee_get_product, shopee_get_trending, shopee_find_high_commission
+from MCP.tools.social_api_tools import tiktok_trending, tiktok_search, tiktok_analyze, tiktok_creator, social_search, social_trending, social_brand_mentions
+from MCP.tools.ecommerce_tools import search_products, get_product_details, get_trending_products, compare_products, find_affiliate_products
+from MCP.tools.shopee_tools import shopee_search_products, shopee_get_product, shopee_get_trending, shopee_find_high_commission
+from MCP.tools.social_api_tools import tiktok_trending, tiktok_search, tiktok_analyze, tiktok_creator, social_search, social_trending, social_brand_mentions
+from MCP.tools.ecommerce_tools import search_products, get_product_details, get_trending_products, compare_products, find_affiliate_products
 
 mcp = FastMCP(
     "TITAN AIO",
@@ -1789,3 +1801,108 @@ async def ws_broadcast_pipeline_tool(pipeline_id: str, status: str, phase: str =
 async def ws_connections() -> dict:
     """Get WebSocket connection count and buffer status."""
     return await ws_get_connections()
+
+
+# ── E-commerce APIs (Real Shopee + Tokopedia) ───────────────────
+
+
+@mcp.tool()
+async def shopee_search(query: str, page: int = 1, limit: int = 20, sort: str = "relevancy") -> dict:
+    """Search products on Shopee Indonesia. Real API call."""
+    result = await shopee_search_products(query=query, page=page, limit=limit, sort=sort)
+    return result.model_dump() if hasattr(result, "model_dump") else result
+
+
+@mcp.tool()
+async def shopee_product(url: str) -> dict:
+    """Get product details from a Shopee URL."""
+    result = await shopee_get_product(url=url)
+    return result.model_dump() if hasattr(result, "model_dump") else result
+
+
+@mcp.tool()
+async def shopee_trending(category: str = "", limit: int = 20) -> dict:
+    """Get trending products from Shopee."""
+    result = await shopee_get_trending(category=category, limit=limit)
+    return result.model_dump() if hasattr(result, "model_dump") else result
+
+
+@mcp.tool()
+async def shopee_high_commission(keyword: str = "", limit: int = 10) -> list[dict]:
+    """Find high-commission affiliate products on Shopee."""
+    return await shopee_find_high_commission(keyword=keyword, limit=limit)
+
+
+@mcp.tool()
+async def ecommerce_search(query: str, platform: str = "shopee", page: int = 1, limit: int = 20, sort: str = "relevancy") -> dict:
+    """Search products across Shopee or Tokopedia."""
+    return await search_products(query=query, platform=platform, page=page, limit=limit, sort=sort)
+
+
+@mcp.tool()
+async def ecommerce_product_details(url: str) -> dict:
+    """Get product details from any Shopee or Tokopedia URL."""
+    return await get_product_details(url=url)
+
+
+@mcp.tool()
+async def ecommerce_trending(platform: str = "shopee", category: str = "", limit: int = 20) -> dict:
+    """Get trending products from Shopee or Tokopedia."""
+    return await get_trending_products(platform=platform, category=category, limit=limit)
+
+
+@mcp.tool()
+async def ecommerce_compare(url_a: str, url_b: str) -> dict:
+    """Compare two products side by side."""
+    return await compare_products(url_a=url_a, url_b=url_b)
+
+
+@mcp.tool()
+async def ecommerce_find_affiliates(keyword: str, platform: str = "shopee", limit: int = 10) -> list[dict]:
+    """Find affiliate-ready products across platforms."""
+    return await find_affiliate_products(keyword=keyword, platform=platform, limit=limit)
+
+
+# ── Social Media APIs (Real TikTok + Social) ────────────────────
+
+
+@mcp.tool()
+async def tiktok_trending_hashtags(category: str = "", limit: int = 20) -> list[dict]:
+    """Get trending hashtags from TikTok."""
+    return await tiktok_trending(category=category, limit=limit)
+
+
+@mcp.tool()
+async def tiktok_search_videos(query: str, count: int = 20) -> list[dict]:
+    """Search for videos on TikTok."""
+    return await tiktok_search(query=query, count=count)
+
+
+@mcp.tool()
+async def tiktok_analyze_video(video_url: str) -> dict:
+    """Analyze engagement metrics for a TikTok video."""
+    return await tiktok_analyze(video_url=video_url)
+
+
+@mcp.tool()
+async def tiktok_get_creator(username: str) -> dict:
+    """Get TikTok creator profile information."""
+    return await tiktok_creator(username=username)
+
+
+@mcp.tool()
+async def social_search_all(query: str, platforms: str = "tiktok", limit: int = 10) -> list[dict]:
+    """Search across social media platforms."""
+    return await social_search(query=query, platforms=platforms, limit=limit)
+
+
+@mcp.tool()
+async def social_get_trending(platforms: str = "tiktok", category: str = "", limit: int = 20) -> list[dict]:
+    """Get trending topics across social platforms."""
+    return await social_trending(platforms=platforms, category=category, limit=limit)
+
+
+@mcp.tool()
+async def social_find_brand(brand: str, platforms: str = "tiktok", limit: int = 50) -> list[dict]:
+    """Find brand mentions across social platforms."""
+    return await social_brand_mentions(brand=brand, platforms=platforms, limit=limit)
