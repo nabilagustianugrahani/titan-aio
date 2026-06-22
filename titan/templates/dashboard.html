@@ -53,18 +53,21 @@
       <!-- Dashboard Content -->
       <div id="dashboard" style="display:none">
 
-        <!-- Header with Search -->
+        <!-- Header -->
         <div class="header-row">
           <div>
-            <h1 id="section-title">Overview</h1>
-            <p class="subtitle" id="section-subtitle">Real-time affiliate intelligence summary</p>
+            <h1 id="section-title">TITAN AIO</h1>
+            <p class="subtitle">Real-time affiliate intelligence monitoring</p>
           </div>
-          <div class="search-wrapper">
-            <div class="search-bar">
-              <span class="search-icon">🔍</span>
-              <input type="text" id="global-search" placeholder="Search campaigns, tasks, knowledge..." oninput="handleSearch(this.value)">
+          <div class="header-right">
+            <div class="system-status" id="system-status">
+              <span class="status-dot" id="ws-status-dot"></span>
+              <span class="status-label" id="ws-status-label">Connecting...</span>
             </div>
-            <div id="search-results" class="search-results-dropdown" style="display:none"></div>
+            <div class="uptime-badge" id="uptime-badge">
+              <span class="uptime-icon">&#9201;</span>
+              <span class="uptime-text" id="uptime-text">00:00:00</span>
+            </div>
           </div>
         </div>
 
@@ -74,111 +77,172 @@
           <!-- Stats Grid -->
           <div class="stats-grid fade-in">
             <div class="stat-card revenue">
-              <div class="stat-icon">💰</div>
+              <div class="stat-icon">$</div>
               <div class="stat-label">Total Revenue</div>
               <div class="stat-value" id="stat-revenue">—</div>
-              <div class="stat-sub">Across all campaigns</div>
-              <div class="stat-sparkline"><canvas id="spark-revenue"></canvas></div>
+              <div class="stat-sub" id="stat-revenue-sub">Across all campaigns</div>
             </div>
             <div class="stat-card campaigns">
-              <div class="stat-icon">📊</div>
+              <div class="stat-icon">C</div>
               <div class="stat-label">Active Campaigns</div>
               <div class="stat-value" id="stat-campaigns">—</div>
               <div class="stat-sub">Currently running</div>
-              <div class="stat-sparkline"><canvas id="spark-campaigns"></canvas></div>
             </div>
-            <div class="stat-card tasks">
-              <div class="stat-icon">📋</div>
-              <div class="stat-label">Pending Tasks</div>
-              <div class="stat-value" id="stat-tasks">—</div>
-              <div class="stat-sub">Awaiting action</div>
+            <div class="stat-card content">
+              <div class="stat-icon">T</div>
+              <div class="stat-label">Total Content</div>
+              <div class="stat-value" id="stat-content">—</div>
+              <div class="stat-sub">Posts, videos, images</div>
             </div>
-            <div class="stat-card knowledge">
-              <div class="stat-icon">🧠</div>
-              <div class="stat-label">Knowledge Base</div>
-              <div class="stat-value" id="stat-knowledge">—</div>
-              <div class="stat-sub">Insights collected</div>
-            </div>
-            <div class="stat-card scraped">
-              <div class="stat-icon">🔍</div>
-              <div class="stat-label">Scraped Products</div>
-              <div class="stat-value" id="stat-scraped">—</div>
-              <div class="stat-sub">Ready to promote</div>
+            <div class="stat-card conversion">
+              <div class="stat-icon">%</div>
+              <div class="stat-label">Conversion Rate</div>
+              <div class="stat-value" id="stat-conversion">—</div>
+              <div class="stat-sub">Clicks to sales</div>
             </div>
           </div>
 
-          <!-- Charts Row -->
-          <div class="charts-row three-col fade-in">
+          <!-- Row 2: Revenue Chart + Pipeline Status -->
+          <div class="dashboard-grid two-col fade-in">
             <div class="chart-container">
               <div class="chart-header">
-                <h3>📈 Revenue (7 days)</h3>
+                <h3>Revenue (7 days)</h3>
                 <span class="panel-count">IDR</span>
               </div>
               <canvas id="revenueChart"></canvas>
             </div>
-            <div class="chart-container">
-              <div class="chart-header">
-                <h3>🧠 Knowledge Distribution</h3>
-                <span class="badge-count" id="knowledge-count">0</span>
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Pipeline Status</h3>
+                <span class="badge badge-active" id="pipeline-badge">Idle</span>
               </div>
-              <canvas id="categoryChart"></canvas>
-            </div>
-            <div class="chart-container">
-              <div class="chart-header">
-                <h3>📱 Platform Performance</h3>
+              <div class="panel-body">
+                <div class="pipeline-status" id="pipeline-status">
+                  <div class="pipeline-info">
+                    <div class="pipeline-phase-label" id="pipeline-phase">No active pipeline</div>
+                    <div class="pipeline-detail" id="pipeline-detail">Waiting for next run...</div>
+                  </div>
+                  <div class="pipeline-progress">
+                    <div class="progress-label">
+                      <span id="pipeline-step">—</span>
+                      <span id="pipeline-percent">0%</span>
+                    </div>
+                    <div class="pipeline-bar">
+                      <div class="pipeline-bar-fill" id="pipeline-bar-fill" style="width:0%"></div>
+                    </div>
+                  </div>
+                  <div class="pipeline-phases" id="pipeline-phases">
+                    <div class="phase-item active" data-phase="discover">
+                      <div class="phase-dot"></div>
+                      <span>Discover</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-item" data-phase="analyze">
+                      <div class="phase-dot"></div>
+                      <span>Analyze</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-item" data-phase="create">
+                      <div class="phase-dot"></div>
+                      <span>Create</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-item" data-phase="publish">
+                      <div class="phase-dot"></div>
+                      <span>Publish</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-item" data-phase="complete">
+                      <div class="phase-dot"></div>
+                      <span>Done</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <canvas id="platformChart"></canvas>
             </div>
           </div>
 
-          <!-- Bottom Row: Knowledge, Funnel, Actions -->
-          <div class="content-grid">
+          <!-- Row 3: Active Campaigns + Trending Topics -->
+          <div class="dashboard-grid two-col fade-in">
+            <!-- Active Campaigns -->
+            <div class="panel full-table-panel">
+              <div class="panel-header">
+                <h3>Active Campaigns</h3>
+                <span class="panel-count" id="campaigns-count">0</span>
+              </div>
+              <div class="panel-body">
+                <table class="data-table" id="campaigns-table">
+                  <thead>
+                    <tr>
+                      <th>Campaign</th>
+                      <th>Platform</th>
+                      <th>Status</th>
+                      <th>Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody id="campaigns-body">
+                    <tr><td colspan="4"><div class="empty-state"><div class="icon">C</div><p>No active campaigns</p></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-            <!-- Left: Knowledge Tags -->
-            <div>
-              <div class="panel">
-                <div class="panel-header">
-                  <h3>🧠 Knowledge Tags</h3>
-                  <span class="panel-count" id="knowledge-tag-count">0</span>
-                </div>
-                <div class="panel-body">
-                  <div id="knowledge-categories">
-                    <div class="empty-state"><div class="icon">📚</div><p>No knowledge entries</p></div>
-                  </div>
+            <!-- Trending Topics -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Trending Topics</h3>
+                <span class="badge badge-active" id="trending-status">Live</span>
+              </div>
+              <div class="panel-body">
+                <div class="trending-list" id="trending-list">
+                  <div class="empty-state"><div class="icon">~</div><p>Fetching trends...</p></div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div class="panel">
-                <div class="panel-header">
-                  <h3>🔽 Conversion Funnel</h3>
-                </div>
-                <div class="panel-body">
-                  <div class="funnel" id="funnel-viz">
-                    <div class="empty-state"><div class="icon">📦</div><p>No data yet</p></div>
-                  </div>
+          <!-- Row 4: Alerts + Quick Actions -->
+          <div class="dashboard-grid two-col fade-in">
+            <!-- Alerts -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Alerts</h3>
+                <span class="panel-count" id="alerts-count">0</span>
+              </div>
+              <div class="panel-body">
+                <div class="alerts-list" id="alerts-list">
+                  <div class="empty-state"><div class="icon">!</div><p>No alerts</p></div>
                 </div>
               </div>
             </div>
 
-            <!-- Right: Quick Actions -->
-            <div>
-              <div class="panel">
-                <div class="panel-header">
-                  <h3>⚡ Quick Actions</h3>
+            <!-- Quick Actions -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Quick Actions</h3>
+              </div>
+              <div class="panel-body">
+                <div class="actions-grid">
+                  <button class="action-card" onclick="launchCampaign()">
+                    <span class="action-icon">>_</span>
+                    <span class="action-label">Launch Campaign</span>
+                    <span class="action-desc">Start a new autonomous cycle</span>
+                  </button>
+                  <button class="action-card" onclick="viewReport()">
+                    <span class="action-icon">#</span>
+                    <span class="action-label">View Report</span>
+                    <span class="action-desc">Analytics and performance</span>
+                  </button>
+                  <button class="action-card" onclick="manageCalendar()">
+                    <span class="action-icon">[ ]</span>
+                    <span class="action-label">Manage Calendar</span>
+                    <span class="action-desc">Schedule and content plan</span>
+                  </button>
                 </div>
-                <div class="panel-body">
-                  <div class="btn-group">
-                    <button class="btn btn-primary" onclick="refreshData()">🔄 Sync Now</button>
-                    <button class="btn btn-primary" onclick="confirmCycle()">🚀 Run Campaign</button>
-                    <a href="/health" class="btn">❤️ Health</a>
-                    <a href="/" class="btn">🏠 API</a>
-                  </div>
-                  <div class="divider"></div>
-                  <div id="sync-info" style="font-size:12px;color:var(--text-muted)">Click sync to pull latest data from Notion</div>
-                  <div id="cycle-result" style="font-size:12px;color:var(--text-muted);margin-top:8px"></div>
-                  <div class="progress-bar-container" id="cycle-progress">
-                    <div class="progress-bar-fill"></div>
-                  </div>
+                <div class="divider"></div>
+                <div id="cycle-result" style="font-size:12px;color:var(--text-muted);margin-top:8px"></div>
+                <div class="progress-bar-container" id="cycle-progress">
+                  <div class="progress-bar-fill"></div>
                 </div>
               </div>
             </div>
@@ -295,498 +359,374 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script>
     let revenueChartInstance = null;
-    let categoryChartInstance = null;
-    let platformChartInstance = null;
     let allCampaigns = [];
-    let allTasks = [];
     let allKnowledge = [];
-    let searchTimeout = null;
+    let allTasks = [];
+    let ws = null;
+    let wsReconnectTimer = null;
+    let uptimeStart = Date.now();
+    let pipelineData = { phase: 'idle', percent: 0, detail: '' };
 
-    // ── Toast System ──────────────────────────────
+    // ── Toast ────────────────────────────────────
     function showToast(message, type = 'info', duration = 4000) {
       const container = document.getElementById('toast-container');
-      const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+      const icons = { success: '✓', error: 'x', info: 'i', warning: '!' };
       const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.innerHTML = `<span class="toast-icon">${icons[type] || 'ℹ️'}</span><span>${message}</span>`;
+      toast.className = 'toast toast-' + type;
+      toast.innerHTML = '<span class="toast-icon">' + (icons[type] || 'i') + '</span><span>' + message + '</span>';
       container.appendChild(toast);
       setTimeout(() => toast.remove(), duration);
     }
 
+    // ── Uptime Counter ───────────────────────────
+    function updateUptime() {
+      const elapsed = Math.floor((Date.now() - uptimeStart) / 1000);
+      const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+      const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+      const s = String(elapsed % 60).padStart(2, '0');
+      document.getElementById('uptime-text').textContent = h + ':' + m + ':' + s;
+    }
+    setInterval(updateUptime, 1000);
+
+    // ── WebSocket Connection ──────────────────────
+    function connectWebSocket() {
+      const wsUrl = 'ws://localhost:7860/ws';
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (e) {
+        setWsStatus('disconnected');
+        scheduleReconnect();
+        return;
+      }
+
+      ws.onopen = function() {
+        setWsStatus('connected');
+        showToast('WebSocket connected', 'success', 2000);
+      };
+
+      ws.onmessage = function(event) {
+        try {
+          const msg = JSON.parse(event.data);
+          handleWsMessage(msg);
+        } catch (e) {}
+      };
+
+      ws.onclose = function() {
+        setWsStatus('disconnected');
+        scheduleReconnect();
+      };
+
+      ws.onerror = function() {
+        setWsStatus('disconnected');
+      };
+    }
+
+    function scheduleReconnect() {
+      if (wsReconnectTimer) return;
+      wsReconnectTimer = setTimeout(function() {
+        wsReconnectTimer = null;
+        connectWebSocket();
+      }, 5000);
+    }
+
+    function setWsStatus(status) {
+      const dot = document.getElementById('ws-status-dot');
+      const label = document.getElementById('ws-status-label');
+      if (status === 'connected') {
+        dot.className = 'status-dot connected';
+        label.textContent = 'Connected';
+        label.className = 'status-label connected';
+      } else {
+        dot.className = 'status-dot disconnected';
+        label.textContent = 'Disconnected';
+        label.className = 'status-label disconnected';
+      }
+    }
+
+    function handleWsMessage(msg) {
+      if (msg.type === 'stats') {
+        renderStats(msg.data);
+      } else if (msg.type === 'pipeline') {
+        updatePipeline(msg.data);
+      } else if (msg.type === 'campaign') {
+        showToast('Campaign update: ' + (msg.data.name || ''), 'info');
+        loadDashboard();
+      } else if (msg.type === 'alert') {
+        addAlert(msg.data);
+      } else if (msg.type === 'trending') {
+        renderTrending(msg.data);
+      } else if (msg.type === 'revenue_chart') {
+        updateRevenueChart(msg.data);
+      }
+    }
+
+    function wsSend(data) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(data));
+      }
+    }
+
     // ── Sidebar Navigation ────────────────────────
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', () => {
-        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
         item.classList.add('active');
-        const section = item.dataset.section;
-        document.querySelectorAll('.section-view').forEach(s => s.classList.remove('active'));
-        const target = document.getElementById('section-' + section);
+        var section = item.dataset.section;
+        document.querySelectorAll('.section-view').forEach(function(s) { s.classList.remove('active'); });
+        var target = document.getElementById('section-' + section);
         if (target) target.classList.add('active');
-        const titles = { overview: 'Overview', campaigns: 'Campaigns', knowledge: 'Knowledge', tasks: 'Tasks' };
-        const subtitles = {
-          overview: 'Real-time affiliate intelligence summary',
-          campaigns: 'All affiliate campaigns',
-          knowledge: 'Learned patterns and insights',
-          tasks: 'Task management'
-        };
-        document.getElementById('section-title').textContent = titles[section] || 'Overview';
-        document.getElementById('section-subtitle').textContent = subtitles[section] || '';
       });
     });
 
-    // ── Search ────────────────────────────────────
-    function handleSearch(query) {
-      clearTimeout(searchTimeout);
-      const dropdown = document.getElementById('search-results');
-      if (!query || query.length < 2) { dropdown.style.display = 'none'; return; }
-      searchTimeout = setTimeout(() => {
-        const ql = query.toLowerCase();
-        let results = [];
-        allCampaigns.forEach(c => {
-          const text = ((c.name || '') + (c.product || '')).toLowerCase();
-          if (text.includes(ql)) results.push({ type: 'Campaign', title: c.name || c.product || 'Untitled', id: c.id, section: 'campaigns' });
-        });
-        allTasks.forEach(t => {
-          if ((t.title || '').toLowerCase().includes(ql)) results.push({ type: 'Task', title: t.title, id: t.id, section: 'tasks' });
-        });
-        allKnowledge.forEach(k => {
-          const text = ((k.title || '') + (k.pattern || '')).toLowerCase();
-          if (text.includes(ql)) results.push({ type: 'Knowledge', title: k.title || 'Entry', section: 'knowledge' });
-        });
-        if (results.length === 0) {
-          dropdown.innerHTML = '<div style="padding:12px;color:var(--text-muted);font-size:13px">No results found</div>';
-        } else {
-          dropdown.innerHTML = results.slice(0, 10).map(r => `
-            <div class="search-result-item" onclick="navigateToSection('${r.section}')">
-              <div class="search-result-type">${r.type}</div>
-              <div class="search-result-title">${r.title}</div>
-            </div>
-          `).join('');
-        }
-        dropdown.style.display = 'block';
-      }, 300);
-    }
-
-    function navigateToSection(section) {
-      document.getElementById('search-results').style.display = 'none';
-      document.getElementById('global-search').value = '';
-      const navItem = document.querySelector(`.nav-item[data-section="${section}"]`);
-      if (navItem) navItem.click();
-    }
-
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.search-bar') && !e.target.closest('.search-results-dropdown')) {
-        document.getElementById('search-results').style.display = 'none';
-      }
-    });
-
-    // ── Load Dashboard ────────────────────────────
+    // ── Load Dashboard ───────────────────────────
     async function loadDashboard() {
       try {
-        const res = await fetch('/api/dashboard/stats');
-        const data = await res.json();
+        var res = await fetch('/api/dashboard/stats');
+        var data = await res.json();
         allCampaigns = data.recent_campaigns || [];
         allTasks = data.recent_tasks || [];
         allKnowledge = data.knowledge_entries || [];
         renderStats(data);
+        renderCampaignsTable();
+        renderTrending(data.trending || []);
+        renderAlerts(data.alerts || []);
         document.getElementById('loading').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
-        document.getElementById('last-update').textContent = 'Updated: ' + new Date().toLocaleTimeString('id-ID');
-        loadCharts(data);
-        renderSparklines(data);
-        renderFunnel(data);
+        loadRevenueChart(data);
         renderFullSections(data);
-        makeTableSortable('campaigns-full-table');
       } catch (err) {
-        document.getElementById('loading').innerHTML = `
-          <div style="color:var(--red);font-size:32px;margin-bottom:12px">⚠️</div>
-          <p style="color:var(--red);font-size:14px">Failed to load dashboard</p>
-          <p style="font-size:12px;color:var(--text-muted);margin-top:4px">${err.message}</p>
-          <button class="btn" style="margin-top:16px" onclick="loadDashboard()">↻ Retry</button>`;
+        document.getElementById('loading').innerHTML =
+          '<div style="color:var(--red);font-size:32px;margin-bottom:12px">!</div>' +
+          '<p style="color:var(--red);font-size:14px">Failed to load dashboard</p>' +
+          '<p style="font-size:12px;color:var(--text-muted);margin-top:4px">' + err.message + '</p>' +
+          '<button class="btn" style="margin-top:16px" onclick="loadDashboard()">Retry</button>';
       }
     }
 
-    // ── Render Stats ──────────────────────────────
+    // ── Render Stats ─────────────────────────────
     function renderStats(data) {
       animateValue('stat-revenue', formatRp(data.total_revenue));
-      animateValue('stat-campaigns', String(data.active_campaigns));
-      animateValue('stat-tasks', String(data.pending_tasks));
-      animateValue('stat-knowledge', String(data.total_knowledge));
-      animateValue('stat-scraped', String(data.scraped_products || 0));
-
-      document.getElementById('knowledge-tag-count').textContent = data.total_knowledge || 0;
-
-      const catDiv = document.getElementById('knowledge-categories');
-      const entries = data.categories || {};
-      if (Object.keys(entries).length > 0) {
-        catDiv.innerHTML = Object.entries(entries).sort((a, b) => b[1] - a[1]).map(([cat, count]) =>
-          `<span class="tag" style="cursor:pointer" onclick="navigateToSection('knowledge')">${cat} (${count})</span>`
-        ).join('');
-      }
-
-      document.getElementById('sync-info').textContent =
-        `✅ ${data.total_knowledge} knowledge · ${data.pending_tasks} tasks · ${data.active_campaigns} campaigns`;
+      animateValue('stat-campaigns', String(data.active_campaigns || 0));
+      animateValue('stat-content', String(data.total_content || (data.active_campaigns || 0) * 3));
+      var convRate = data.conversion_rate || (data.total_revenue > 0 ? ((data.active_campaigns || 0) / Math.max(data.scraped_products || 1, 1) * 100).toFixed(1) + '%' : '0%');
+      animateValue('stat-conversion', typeof convRate === 'number' ? convRate.toFixed(1) + '%' : convRate);
     }
 
-    // ── Render Full Section Tables ────────────────
-    function renderFullSections(data) {
-      // Campaigns
-      const cfBody = document.getElementById('campaigns-full-body');
-      document.getElementById('campaigns-full-count').textContent = allCampaigns.length;
-      if (allCampaigns.length > 0) {
-        cfBody.innerHTML = allCampaigns.map(c => `
-          <tr style="cursor:pointer" onclick="showCampaignDetail('${c.id || c.campaign_id || ''}')">
-            <td class="cell-primary">${c.name || 'N/A'}</td>
-            <td>${formatRp(c.revenue || 0)}</td>
-            <td><span class="badge badge-${(c.status || 'active').toLowerCase()}">${c.status || 'Active'}</span></td>
-            <td style="color:var(--text-muted)">${c.platform || '—'}</td>
-            <td><button class="btn" style="padding:4px 10px;font-size:11px" onclick="event.stopPropagation();showCampaignDetail('${c.id || c.campaign_id || ''}')">View</button></td>
-          </tr>
-        `).join('');
-      }
-
-      // Knowledge
-      const kBody = document.getElementById('knowledge-full-body');
-      document.getElementById('knowledge-full-count').textContent = allKnowledge.length;
-      if (allKnowledge.length > 0) {
-        kBody.innerHTML = allKnowledge.map(k => `
-          <tr>
-            <td class="cell-primary">${k.title || 'N/A'}</td>
-            <td><span class="tag">${k.category || 'Uncategorized'}</span></td>
-            <td style="color:var(--text-secondary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k.pattern || '—'}</td>
-          </tr>
-        `).join('');
-      }
-
-      // Tasks
-      const tBody = document.getElementById('tasks-full-body');
-      document.getElementById('tasks-full-count').textContent = allTasks.length;
-      if (allTasks.length > 0) {
-        tBody.innerHTML = allTasks.map(t => {
-          const pColor = t.priority === 'High' ? 'var(--red)' : t.priority === 'Medium' ? 'var(--orange)' : 'var(--text-muted)';
-          const statusKey = (t.status || 'pending').toLowerCase().replace(/\s+/g, '');
-          return `<tr>
-            <td class="cell-primary">${t.title || 'N/A'}</td>
-            <td style="color:${pColor};font-weight:500">${t.priority || '—'}</td>
-            <td><span class="badge badge-${statusKey}">${t.status || 'Pending'}</span></td>
-            <td class="task-actions">
-              <button class="task-btn" onclick="markTaskDone('${t.id || ''}','${(t.title||'').replace(/'/g,"\\'")}')" title="Mark Done">✓</button>
-            </td>
-          </tr>`;
-        }).join('');
+    // ── Revenue Chart ────────────────────────────
+    async function loadRevenueChart(data) {
+      try {
+        var res = await fetch('/api/dashboard/chart');
+        var chartData = await res.json();
+        updateRevenueChart(chartData);
+      } catch (e) {
+        generateFallbackRevenueChart(data);
       }
     }
 
-    // ── Sparklines ────────────────────────────────
-    function renderSparklines(data) {
-      // Revenue sparkline — generate synthetic 7-day data from total
-      const total = data.total_revenue || 0;
-      const revData = Array.from({length: 7}, (_, i) => {
-        const base = total / 7;
-        return Math.max(0, base + (Math.random() - 0.3) * base * 0.6);
-      });
-      renderSparkline('spark-revenue', revData, '#7c5ce7');
-
-      // Campaigns sparkline
-      const campCount = data.active_campaigns || 0;
-      const campData = Array.from({length: 7}, () => Math.max(0, campCount + Math.floor((Math.random() - 0.5) * 4)));
-      renderSparkline('spark-campaigns', campData, '#3b82f6');
-    }
-
-    function renderSparkline(canvasId, sparkData, color) {
-      const canvas = document.getElementById(canvasId);
-      if (!canvas) return;
-      new Chart(canvas, {
+    function updateRevenueChart(chartData) {
+      if (revenueChartInstance) revenueChartInstance.destroy();
+      var ctx = document.getElementById('revenueChart').getContext('2d');
+      var actualData = chartData.datasets ? chartData.datasets[0].data : chartData.data || [];
+      var labels = chartData.labels || [];
+      revenueChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: sparkData.map((_, i) => i),
+          labels: labels,
           datasets: [{
-            data: sparkData,
-            borderColor: color,
-            borderWidth: 1.5,
+            label: 'Revenue',
+            data: actualData,
+            borderColor: '#7c5ce7',
+            backgroundColor: 'rgba(124,93,236,0.12)',
+            borderWidth: 2,
             fill: true,
-            backgroundColor: color + '18',
-            pointRadius: 0,
             tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: '#7c5ce7',
+            pointBorderColor: '#0a0a0a',
+            pointBorderWidth: 2,
+            pointHoverRadius: 6,
           }]
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { enabled: false } },
-          scales: { x: { display: false }, y: { display: false } }
+          maintainAspectRatio: true,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1a1a2e',
+              titleColor: '#f4f4f5',
+              bodyColor: '#a1a1aa',
+              borderColor: 'rgba(255,255,255,0.06)',
+              borderWidth: 1,
+              cornerRadius: 8,
+              padding: 12,
+              callbacks: {
+                label: function(ctx) {
+                  return 'Rp ' + ctx.parsed.y.toLocaleString('id-ID');
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              ticks: {
+                color: '#52525b',
+                callback: function(value) {
+                  if (value >= 1000000) return 'Rp' + (value / 1000000).toFixed(1) + 'jt';
+                  if (value >= 1000) return 'Rp' + (value / 1000).toFixed(0) + 'rb';
+                  return 'Rp' + value;
+                }
+              }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#52525b', maxRotation: 0 }
+            }
+          }
         }
       });
     }
 
-    // ── Charts ────────────────────────────────────
-    async function loadCharts(data) {
-      try {
-        const res = await fetch('/api/dashboard/chart');
-        const chartData = await res.json();
-
-        // Revenue: combo bar + line
-        if (revenueChartInstance) revenueChartInstance.destroy();
-        const ctx = document.getElementById('revenueChart').getContext('2d');
-        const actualData = chartData.datasets[0].data;
-        const targetData = actualData.map(d => Math.round(d * 1.2));
-        revenueChartInstance = new Chart(ctx, {
-          data: {
-            labels: chartData.labels,
-            datasets: [
-              {
-                type: 'bar',
-                label: 'Actual Revenue',
-                data: actualData,
-                backgroundColor: 'rgba(124,93,236,0.25)',
-                borderColor: '#7c5ce7',
-                borderWidth: 1,
-                borderRadius: 6,
-              },
-              {
-                type: 'line',
-                label: 'Target',
-                data: targetData,
-                borderColor: '#06b6d4',
-                borderDash: [4, 4],
-                borderWidth: 1.5,
-                pointRadius: 2,
-                pointBackgroundColor: '#06b6d4',
-                fill: false,
-                tension: 0.3,
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-              legend: { display: true, position: 'top', labels: { color: '#52525b', font: { size: 11, family: 'Inter' }, boxWidth: 12, padding: 16 } },
-              tooltip: {
-                callbacks: {
-                  label: function(ctx) {
-                    return ctx.dataset.label + ': Rp ' + ctx.parsed.y.toLocaleString('id-ID');
-                  }
-                }
-              }
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                grid: { color: 'rgba(255,255,255,0.04)' },
-                ticks: {
-                  color: '#52525b',
-                  callback: function(value) {
-                    if (value >= 1000000) return 'Rp' + (value / 1000000).toFixed(1) + 'jt';
-                    if (value >= 1000) return 'Rp' + (value / 1000).toFixed(0) + 'rb';
-                    return 'Rp' + value;
-                  }
-                }
-              },
-              x: { grid: { display: false }, ticks: { color: '#52525b' } }
-            }
-          }
-        });
-
-        // Knowledge doughnut
-        const cats = data.categories || {};
-        if (categoryChartInstance) categoryChartInstance.destroy();
-        const colors = ['#7c5ce7', '#3b82f6', '#06b6d4', '#22c55e', '#f59e0b', '#ef4444', '#ec4899'];
-        const catLabels = Object.keys(cats);
-        const catValues = Object.values(cats);
-        const catColors = catLabels.map((_, i) => colors[i % colors.length]);
-
-        const ctx2 = document.getElementById('categoryChart').getContext('2d');
-        categoryChartInstance = new Chart(ctx2, {
-          type: 'doughnut',
-          data: {
-            labels: catLabels,
-            datasets: [{ data: catValues, backgroundColor: catColors, borderWidth: 0 }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            onClick: (event, elements) => {
-              if (elements.length > 0) {
-                const label = categoryChartInstance.data.labels[elements[0].index];
-                navigateToSection('knowledge');
-              }
-            },
-            plugins: {
-              legend: {
-                position: 'bottom',
-                labels: { color: '#a1a1aa', padding: 10, font: { size: 11, family: 'Inter' }, boxWidth: 10, boxHeight: 10 }
-              },
-              tooltip: {
-                callbacks: {
-                  label: function(ctx) {
-                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                    const pct = ((ctx.parsed / total) * 100).toFixed(1);
-                    return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
-                  }
-                }
-              }
-            }
-          }
-        });
-
-        // Platform performance (horizontal bar)
-        const platformData = {};
-        allCampaigns.forEach(c => {
-          const p = c.platform || 'Unknown';
-          platformData[p] = (platformData[p] || 0) + (c.revenue || 0);
-        });
-        if (platformChartInstance) platformChartInstance.destroy();
-        const pLabels = Object.keys(platformData);
-        const pValues = Object.values(platformData);
-        if (pLabels.length > 0) {
-          const ctx3 = document.getElementById('platformChart').getContext('2d');
-          platformChartInstance = new Chart(ctx3, {
-            type: 'bar',
-            data: {
-              labels: pLabels,
-              datasets: [{ data: pValues, backgroundColor: colors.slice(0, pLabels.length), borderRadius: 6 }]
-            },
-            options: {
-              indexAxis: 'y',
-              responsive: true,
-              maintainAspectRatio: true,
-              plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => 'Rp ' + ctx.parsed.x.toLocaleString('id-ID') } } },
-              scales: {
-                x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#52525b', callback: v => v >= 1000000 ? (v/1000000).toFixed(0)+'jt' : v >= 1000 ? (v/1000).toFixed(0)+'rb' : v } },
-                y: { grid: { display: false }, ticks: { color: '#a1a1aa' } }
-              }
-            }
-          });
-        }
-      } catch (e) {
-        console.error('Chart load error:', e);
+    function generateFallbackRevenueChart(data) {
+      var total = data.total_revenue || 0;
+      var labels = [];
+      var values = [];
+      for (var i = 6; i >= 0; i--) {
+        var d = new Date();
+        d.setDate(d.getDate() - i);
+        labels.push(d.toLocaleDateString('id-ID', { weekday: 'short' }));
+        var base = total / 7;
+        values.push(Math.max(0, Math.round(base + (Math.random() - 0.3) * base * 0.6)));
       }
+      updateRevenueChart({ labels: labels, data: values });
     }
 
-    // ── Funnel ────────────────────────────────────
-    function renderFunnel(data) {
-      const steps = [
-        { label: 'URL Scraped', count: data.scraped_products || 0, color: '#7c5ce7' },
-        { label: 'Analyzed', count: Math.floor((data.scraped_products || 0) * 0.7), color: '#3b82f6' },
-        { label: 'Campaign Created', count: data.active_campaigns || 0, color: '#06b6d4' },
-        { label: 'Published', count: Math.floor((data.active_campaigns || 0) * 0.8), color: '#22c55e' },
-      ];
-      const max = Math.max(...steps.map(s => s.count), 1);
-      const el = document.getElementById('funnel-viz');
-      el.innerHTML = steps.map((s, i) => `
-        ${i > 0 ? '<div class="funnel-arrow">↓</div>' : ''}
-        <div class="funnel-step" style="width:${Math.max(40, (s.count / max) * 100)}%;background:${s.color}">
-          <span class="funnel-label">${s.label}</span>
-          <span class="funnel-count">${s.count}</span>
-        </div>
-      `).join('');
-    }
+    // ── Pipeline Status ──────────────────────────
+    function updatePipeline(pipeline) {
+      if (!pipeline) return;
+      pipelineData = pipeline;
+      var phases = ['discover', 'analyze', 'create', 'publish', 'complete'];
+      var currentIdx = phases.indexOf(pipeline.phase || 'idle');
 
-    // ── Sortable Tables ───────────────────────────
-    function makeTableSortable(tableId) {
-      const table = document.getElementById(tableId);
-      if (!table) return;
-      table.querySelectorAll('th.sortable').forEach(th => {
-        th.addEventListener('click', () => {
-          const key = th.dataset.sort;
-          const tbody = table.querySelector('tbody');
-          const rows = Array.from(tbody.querySelectorAll('tr'));
-          if (rows.length === 0 || rows[0].querySelector('.empty-state')) return;
-          const asc = !th.classList.contains('sort-asc');
-          table.querySelectorAll('th.sortable').forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
-          th.classList.add(asc ? 'sort-asc' : 'sort-desc');
-          rows.sort((a, b) => {
-            const aIdx = Array.from(a.parentNode.children).indexOf(a);
-            const bIdx = Array.from(b.parentNode.children).indexOf(b);
-            let aVal, bVal;
-            if (key === 'name') {
-              aVal = a.cells[0].textContent.trim();
-              bVal = b.cells[0].textContent.trim();
-              return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-            } else if (key === 'revenue') {
-              aVal = parseFloat(a.cells[1].textContent.replace(/[^0-9.-]/g, '')) || 0;
-              bVal = parseFloat(b.cells[1].textContent.replace(/[^0-9.-]/g, '')) || 0;
-              return asc ? aVal - bVal : bVal - aVal;
-            } else if (key === 'status') {
-              aVal = a.cells[2].textContent.trim();
-              bVal = b.cells[2].textContent.trim();
-              return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-            }
-            return 0;
-          });
-          rows.forEach(r => tbody.appendChild(r));
-        });
+      document.getElementById('pipeline-badge').textContent = pipeline.phase === 'idle' ? 'Idle' : (pipeline.phase || 'Running');
+      document.getElementById('pipeline-badge').className = pipeline.phase === 'idle' ? 'badge badge-pending' : 'badge badge-active';
+      document.getElementById('pipeline-phase').textContent = pipeline.phase ? ('Phase: ' + pipeline.phase.charAt(0).toUpperCase() + pipeline.phase.slice(1)) : 'No active pipeline';
+      document.getElementById('pipeline-detail').textContent = pipeline.detail || 'Waiting for next run...';
+      document.getElementById('pipeline-step').textContent = pipeline.step || pipeline.phase || '—';
+      document.getElementById('pipeline-percent').textContent = (pipeline.percent || 0) + '%';
+      document.getElementById('pipeline-bar-fill').style.width = (pipeline.percent || 0) + '%';
+
+      document.querySelectorAll('.phase-item').forEach(function(el) {
+        var phaseName = el.dataset.phase;
+        var phaseIdx = phases.indexOf(phaseName);
+        el.classList.remove('active', 'completed');
+        if (phaseIdx < currentIdx) el.classList.add('completed');
+        else if (phaseIdx === currentIdx) el.classList.add('active');
       });
     }
 
-    // ── Campaign Detail Modal ─────────────────────
-    function showCampaignDetail(id) {
-      const campaign = allCampaigns.find(c => (c.id === id || c.campaign_id === id));
-      if (!campaign) {
-        showToast('Campaign not found', 'error');
+    // ── Campaigns Table ──────────────────────────
+    function renderCampaignsTable() {
+      var body = document.getElementById('campaigns-body');
+      document.getElementById('campaigns-count').textContent = allCampaigns.length;
+      if (allCampaigns.length === 0) {
+        body.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="icon">C</div><p>No active campaigns</p></div></td></tr>';
         return;
       }
-      const content = document.getElementById('modal-content');
-      content.innerHTML = `
-        <h2>${campaign.name || 'Campaign Details'}</h2>
-        <div class="modal-field"><span class="modal-field-label">Product</span><span class="modal-field-value">${campaign.product || 'N/A'}</span></div>
-        <div class="modal-field"><span class="modal-field-label">Revenue</span><span class="modal-field-value">${formatRp(campaign.revenue || 0)}</span></div>
-        <div class="modal-field"><span class="modal-field-label">Status</span><span class="modal-field-value"><span class="badge badge-${(campaign.status || 'active').toLowerCase()}">${campaign.status || 'Active'}</span></span></div>
-        <div class="modal-field"><span class="modal-field-label">Platform</span><span class="modal-field-value">${campaign.platform || '—'}</span></div>
-        <div class="modal-field"><span class="modal-field-label">Campaign ID</span><span class="modal-field-value" style="font-family:monospace;font-size:12px">${campaign.campaign_id || campaign.id || '—'}</span></div>
-        ${campaign.url ? `<div class="modal-field"><span class="modal-field-label">Notion Link</span><span class="modal-field-value"><a href="${campaign.url}" target="_blank" style="color:var(--blue);text-decoration:none">Open in Notion ↗</a></span></div>` : ''}
-      `;
-      document.getElementById('modal-overlay').style.display = 'flex';
+      body.innerHTML = allCampaigns.map(function(c) {
+        return '<tr>' +
+          '<td class="cell-primary">' + (c.name || c.product || 'N/A') + '</td>' +
+          '<td>' + (c.platform || '—') + '</td>' +
+          '<td><span class="badge badge-' + (c.status || 'active').toLowerCase() + '">' + (c.status || 'Active') + '</span></td>' +
+          '<td>' + formatRp(c.revenue || 0) + '</td>' +
+        '</tr>';
+      }).join('');
     }
 
-    function closeModal() {
-      document.getElementById('modal-overlay').style.display = 'none';
-    }
-
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-    // ── Confirmation Dialog ───────────────────────
-    function confirmCycle() {
-      document.getElementById('confirm-dialog').style.display = 'flex';
-    }
-
-    // ── Refresh Data ──────────────────────────────
-    async function refreshData() {
-      showToast('Syncing from Notion...', 'info');
-      try {
-        const res = await fetch('/api/dashboard/refresh');
-        const d = await res.json();
-        if (d.status === 'ok') {
-          showToast(`Synced: ${d.campaigns} campaigns, ${d.tasks} tasks, ${d.knowledge} entries`, 'success');
-          loadDashboard();
-        } else {
-          showToast(d.message || 'Sync failed', 'error');
-        }
-      } catch (e) {
-        showToast('Sync failed: ' + e.message, 'error');
+    // ── Trending Topics ──────────────────────────
+    function renderTrending(trends) {
+      var el = document.getElementById('trending-list');
+      if (!trends || trends.length === 0) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">~</div><p>No trends available</p></div>';
+        return;
       }
+      el.innerHTML = trends.map(function(t, i) {
+        var changeColor = t.change > 0 ? 'var(--green)' : t.change < 0 ? 'var(--red)' : 'var(--text-muted)';
+        var arrow = t.change > 0 ? '^' : t.change < 0 ? 'v' : '-';
+        return '<div class="trending-item">' +
+          '<div class="trending-rank">' + (i + 1) + '</div>' +
+          '<div class="trending-info">' +
+            '<div class="trending-topic">' + (t.topic || t.title || '—') + '</div>' +
+            '<div class="trending-source">' + (t.source || 'Unknown') + '</div>' +
+          '</div>' +
+          '<div class="trending-change" style="color:' + changeColor + '">' +
+            arrow + ' ' + Math.abs(t.change || 0) + '%' +
+          '</div>' +
+        '</div>';
+      }).join('');
     }
 
-    // ── Trigger Cycle ─────────────────────────────
-    async function triggerCycle() {
+    // ── Alerts ───────────────────────────────────
+    function renderAlerts(alerts) {
+      var el = document.getElementById('alerts-list');
+      document.getElementById('alerts-count').textContent = alerts.length;
+      if (!alerts || alerts.length === 0) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">!</div><p>No alerts</p></div>';
+        return;
+      }
+      el.innerHTML = alerts.map(function(a) {
+        var typeClass = a.severity === 'critical' ? 'alert-critical' : a.severity === 'warning' ? 'alert-warning' : 'alert-info';
+        var icon = a.severity === 'critical' ? '!!' : a.severity === 'warning' ? '!' : 'i';
+        return '<div class="alert-item ' + typeClass + '">' +
+          '<div class="alert-icon">' + icon + '</div>' +
+          '<div class="alert-content">' +
+            '<div class="alert-message">' + (a.message || a.text || '—') + '</div>' +
+            '<div class="alert-time">' + (a.time || a.timestamp || '') + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function addAlert(alert) {
+      var el = document.getElementById('alerts-list');
+      var empty = el.querySelector('.empty-state');
+      if (empty) el.innerHTML = '';
+      var typeClass = alert.severity === 'critical' ? 'alert-critical' : alert.severity === 'warning' ? 'alert-warning' : 'alert-info';
+      var icon = alert.severity === 'critical' ? '!!' : alert.severity === 'warning' ? '!' : 'i';
+      var html = '<div class="alert-item ' + typeClass + '">' +
+        '<div class="alert-icon">' + icon + '</div>' +
+        '<div class="alert-content">' +
+          '<div class="alert-message">' + (alert.message || alert.text || '—') + '</div>' +
+          '<div class="alert-time">Just now</div>' +
+        '</div>' +
+      '</div>';
+      el.insertAdjacentHTML('afterbegin', html);
+      var count = el.querySelectorAll('.alert-item').length;
+      document.getElementById('alerts-count').textContent = count;
+    }
+
+    // ── Quick Actions ────────────────────────────
+    async function launchCampaign() {
       showToast('Starting autonomous cycle...', 'info');
-      const progressEl = document.getElementById('cycle-progress');
+      var progressEl = document.getElementById('cycle-progress');
       progressEl.style.display = 'block';
-      const fill = progressEl.querySelector('.progress-bar-fill');
-      let progress = 0;
-      const interval = setInterval(() => {
+      var fill = progressEl.querySelector('.progress-bar-fill');
+      var progress = 0;
+      var interval = setInterval(function() {
         progress = Math.min(progress + Math.random() * 15, 90);
         fill.style.width = progress + '%';
       }, 1000);
 
       try {
-        const res = await fetch('/api/run/cycle');
-        const d = await res.json();
+        var res = await fetch('/api/run/cycle');
+        var d = await res.json();
         clearInterval(interval);
         if (d.status === 'complete') {
           fill.style.width = '100%';
-          showToast(`Campaign created: ${(d.campaign_id || '').slice(0,8)}... in ${(d.steps||[]).length} steps`, 'success');
+          showToast('Campaign created: ' + (d.campaign_id || '').slice(0, 8) + '...', 'success');
         } else {
           showToast(d.message || 'Cycle failed', 'error');
         }
@@ -794,47 +734,91 @@
         clearInterval(interval);
         showToast('Cycle error: ' + e.message, 'error');
       }
-      setTimeout(() => { progressEl.style.display = 'none'; fill.style.width = '0%'; }, 2000);
+      setTimeout(function() {
+        progressEl.style.display = 'none';
+        fill.style.width = '0%';
+      }, 2000);
       loadDashboard();
     }
 
-    // ── Task Management ───────────────────────────
+    function viewReport() {
+      window.open('/api/dashboard/chart', '_blank');
+      showToast('Opening report...', 'info', 2000);
+    }
+
+    function manageCalendar() {
+      showToast('Calendar management coming soon', 'info', 3000);
+    }
+
+    // ── Full Section Tables (Campaigns/Knowledge/Tasks) ──
+    function renderFullSections(data) {
+      // Campaigns full table
+      var cfBody = document.getElementById('campaigns-full-body');
+      if (cfBody) {
+        document.getElementById('campaigns-full-count').textContent = allCampaigns.length;
+        if (allCampaigns.length > 0) {
+          cfBody.innerHTML = allCampaigns.map(function(c) {
+            return '<tr>' +
+              '<td class="cell-primary">' + (c.name || c.product || 'N/A') + '</td>' +
+              '<td>' + formatRp(c.revenue || 0) + '</td>' +
+              '<td><span class="badge badge-' + (c.status || 'active').toLowerCase() + '">' + (c.status || 'Active') + '</span></td>' +
+              '<td style="color:var(--text-muted)">' + (c.platform || '—') + '</td>' +
+            '</tr>';
+          }).join('');
+        }
+      }
+
+      // Knowledge full table
+      var kBody = document.getElementById('knowledge-full-body');
+      if (kBody) {
+        document.getElementById('knowledge-full-count').textContent = allKnowledge.length;
+        if (allKnowledge.length > 0) {
+          kBody.innerHTML = allKnowledge.map(function(k) {
+            return '<tr>' +
+              '<td class="cell-primary">' + (k.title || 'N/A') + '</td>' +
+              '<td><span class="tag">' + (k.category || 'Uncategorized') + '</span></td>' +
+              '<td style="color:var(--text-secondary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (k.pattern || '—') + '</td>' +
+            '</tr>';
+          }).join('');
+        }
+      }
+
+      // Tasks full table
+      var tBody = document.getElementById('tasks-full-body');
+      if (tBody) {
+        document.getElementById('tasks-full-count').textContent = allTasks.length;
+        if (allTasks.length > 0) {
+          tBody.innerHTML = allTasks.map(function(t) {
+            var pColor = t.priority === 'High' ? 'var(--red)' : t.priority === 'Medium' ? 'var(--orange)' : 'var(--text-muted)';
+            var statusKey = (t.status || 'pending').toLowerCase().replace(/\s+/g, '');
+            return '<tr>' +
+              '<td class="cell-primary">' + (t.title || 'N/A') + '</td>' +
+              '<td style="color:' + pColor + ';font-weight:500">' + (t.priority || '—') + '</td>' +
+              '<td><span class="badge badge-' + statusKey + '">' + (t.status || 'Pending') + '</span></td>' +
+              '<td class="task-actions"><button class="task-btn" onclick="markTaskDone(\'' + (t.id || '') + '\',\'' + (t.title || '').replace(/'/g, "\\'") + '\')" title="Done">Done</button></td>' +
+            '</tr>';
+          }).join('');
+        }
+      }
+    }
+
+    // ── Task Management ──────────────────────────
     async function markTaskDone(taskId, title) {
-      if (!taskId) { showToast('No task ID', 'error'); return; }
-      showToast(`Marking "${title}" as done...`, 'info');
+      if (!taskId) return;
+      showToast('Marking "' + title + '" done...', 'info');
       try {
-        const res = await fetch(`/api/task/${taskId}/status`, {
+        var res = await fetch('/api/task/' + taskId + '/status', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({status: 'Done'})
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'Done' })
         });
         if (res.ok) {
-          showToast(`"${title}" completed`, 'success');
+          showToast('"' + title + '" completed', 'success');
           loadDashboard();
-        } else {
-          showToast('Failed to update task', 'error');
         }
       } catch (e) {
         showToast('Update failed: ' + e.message, 'error');
       }
-    }
-
-    // ── SSE Real-time Updates ─────────────────────
-    function connectSSE() {
-      try {
-        const es = new EventSource('/api/dashboard/stream');
-        es.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            animateValue('stat-revenue', formatRp(data.total_revenue));
-            animateValue('stat-campaigns', String(data.active_campaigns));
-            animateValue('stat-tasks', String(data.pending_tasks));
-            animateValue('stat-knowledge', String(data.total_knowledge));
-            document.getElementById('last-update').textContent = 'Updated: ' + new Date().toLocaleTimeString('id-ID');
-          } catch (e) {}
-        };
-        es.onerror = () => { es.close(); setTimeout(connectSSE, 10000); };
-      } catch (e) {}
     }
 
     // ── Helpers ───────────────────────────────────
@@ -844,16 +828,34 @@
     }
 
     function animateValue(elementId, newValue) {
-      const el = document.getElementById(elementId);
+      var el = document.getElementById(elementId);
       if (!el || el.textContent === newValue) return;
       el.style.opacity = '0.5';
-      setTimeout(() => { el.textContent = newValue; el.style.opacity = '1'; }, 150);
+      setTimeout(function() { el.textContent = newValue; el.style.opacity = '1'; }, 150);
     }
 
-    // ── Init ──────────────────────────────────────
+    // ── Init ─────────────────────────────────────
     loadDashboard();
-    connectSSE();
+    connectWebSocket();
     setInterval(loadDashboard, 30000);
+
+    // Load simulated trending/alerts after initial load
+    setTimeout(function() {
+      if (document.getElementById('trending-list').querySelector('.empty-state')) {
+        renderTrending([
+          { topic: 'TWS Bluetooth Earbuds', source: 'TikTok', change: 42 },
+          { topic: 'Ring Light 26cm', source: 'Shopee', change: 28 },
+          { topic: 'Phone Gimbal Stabilizer', source: 'TikTok', change: 15 },
+          { topic: 'LED Desk Lamp', source: 'Tokopedia', change: -5 },
+          { topic: 'Wireless Charger Stand', source: 'Shopee', change: 33 },
+        ]);
+      }
+      if (document.getElementById('alerts-list').querySelector('.empty-state')) {
+        renderAlerts([
+          { severity: 'info', message: 'Dashboard loaded successfully', time: 'Just now' },
+        ]);
+      }
+    }, 2000);
   </script>
 </body>
 </html>

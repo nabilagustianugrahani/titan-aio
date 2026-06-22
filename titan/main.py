@@ -272,6 +272,62 @@ async def dashboard_stream() -> StreamingResponse:
     )
 
 
+# ── Telegram Mini App ──────────────────────────────────────────
+
+@app.get("/miniapp", response_class=HTMLResponse)
+@app.get("/app", response_class=HTMLResponse)
+async def telegram_miniapp():
+    """Telegram Mini App — dashboard optimized for Telegram WebView.
+
+    Telegram Mini Apps open inside Telegram's built-in browser.
+    Use this URL when configuring your Telegram Bot's Mini App:
+    https://<your-hf-space>.hf.space/miniapp
+
+    Features: real-time WebSocket, revenue chart, pipeline status,
+    campaign management, quick actions — all inside Telegram.
+    """
+    html = (templates_dir / "dashboard.html").read_text(encoding="utf-8")
+    # Add Telegram WebApp SDK + adjust viewport for Mini App
+    telegram_script = """
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+    if (window.Telegram && Telegram.WebApp) {
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+        // Theme matches Telegram
+        document.documentElement.style.setProperty('--bg-primary', Telegram.WebApp.backgroundColor || '#0a0a0a');
+        document.documentElement.style.setProperty('--text-primary', Telegram.WebApp.textColor || '#ffffff');
+        // Set header color
+        Telegram.WebApp.setHeaderColor('#0a0a0a');
+        Telegram.WebApp.setBackgroundColor('#0a0a0a');
+    }
+    </script>
+    <style>
+    /* Telegram Mini App tweaks */
+    body { padding-top: 0 !important; max-height: 100vh; overflow-y: auto; }
+    .header { display: none !important; }
+    </style>
+    """
+    html = html.replace("</head>", f"{telegram_script}</head>")
+    return HTMLResponse(html)
+
+
+@app.get("/api/miniapp/config")
+async def miniapp_config():
+    """Config for Telegram Mini App — bot token, webapp URL, etc."""
+    return {
+        "webapp_url": f"https://{os.environ.get('SPACE_ID', 'titan-aio')}.hf.space/miniapp",
+        "bot_token_configured": bool(os.environ.get("TELEGRAM_BOT_TOKEN")),
+        "features": [
+            "real-time_dashboard",
+            "revenue_tracking",
+            "pipeline_monitoring",
+            "campaign_management",
+            "quick_actions",
+        ],
+    }
+
+
 def main():
     uvicorn.run("titan.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG, log_level=settings.LOG_LEVEL.lower())
 

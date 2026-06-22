@@ -160,12 +160,8 @@ from MCP.tools.ecommerce_tools import search_products, get_product_details, get_
 from MCP.tools.shopee_tools import shopee_search_products, shopee_get_product, shopee_get_trending, shopee_find_high_commission
 from MCP.tools.social_api_tools import tiktok_trending, tiktok_search, tiktok_analyze, tiktok_creator, social_search, social_trending, social_brand_mentions
 from MCP.tools.ecommerce_tools import search_products, get_product_details, get_trending_products, compare_products, find_affiliate_products
-from MCP.tools.shopee_tools import shopee_search_products, shopee_get_product, shopee_get_trending, shopee_find_high_commission
-from MCP.tools.social_api_tools import tiktok_trending, tiktok_search, tiktok_analyze, tiktok_creator, social_search, social_trending, social_brand_mentions
-from MCP.tools.ecommerce_tools import search_products, get_product_details, get_trending_products, compare_products, find_affiliate_products
-from MCP.tools.shopee_tools import shopee_search_products, shopee_get_product, shopee_get_trending, shopee_find_high_commission
-from MCP.tools.social_api_tools import tiktok_trending, tiktok_search, tiktok_analyze, tiktok_creator, social_search, social_trending, social_brand_mentions
-from MCP.tools.ecommerce_tools import search_products, get_product_details, get_trending_products, compare_products, find_affiliate_products
+from MCP.tools.revenue_tracking_tools import track_affiliate_click, track_conversion, get_revenue_summary, get_revenue_stats
+from MCP.tools.voice_generation_tools import generate_voice_audio, generate_voice_batch, list_tts_voices, list_generated_voices
 
 mcp = FastMCP(
     "TITAN AIO",
