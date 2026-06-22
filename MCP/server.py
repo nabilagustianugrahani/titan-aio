@@ -102,6 +102,36 @@ from MCP.tools.cloud_browser_tools import (
     cloud_navigate_url,
     cloud_screenshot_url,
 )
+from MCP.tools.remix_tools import remix_content as _remix_content
+from MCP.tools.viral_tools import predict_virality as _predict_virality
+from MCP.tools.voice_tools import (
+    create_voice_profile as _create_voice_profile,
+    generate_voice as _generate_voice,
+    list_voice_profiles as _list_voice_profiles,
+    get_voice_profile as _get_voice_profile,
+    update_voice_profile as _update_voice_profile,
+    delete_voice_profile as _delete_voice_profile,
+    generate_batch_voices as _generate_batch_voices,
+    generate_voice_variations as _generate_voice_variations,
+    get_voice_history as _get_voice_history,
+    get_voice_style_presets as _get_voice_style_presets,
+    validate_voice_profile as _validate_voice_profile,
+)
+from MCP.tools.ab_tools import (
+    create_ab_test as _create_ab_test,
+    update_ab_test as _update_ab_test,
+    get_ab_results as _get_ab_results,
+    list_ab_tests as _list_ab_tests,
+    promote_ab_winner as _promote_ab_winner,
+    delete_ab_test as _delete_ab_test,
+    calculate_sample_size as _calculate_sample_size,
+)
+from MCP.tools.trend_monitor_tools import monitor_trends as _monitor_trends
+from MCP.tools.thumbnail_tools import generate_thumbnails as _generate_thumbnails
+from MCP.tools.affiliate_optimizer_tools import optimize_affiliate as _optimize_affiliate
+from MCP.tools.seo_tools import seo_optimize as _seo_optimize
+from MCP.tools.sentiment_tools import monitor_sentiment as _monitor_sentiment
+from MCP.tools.pipeline_tools import get_pipeline_health as _get_pipeline_health
 
 mcp = FastMCP(
     "TITAN AIO",
@@ -755,3 +785,505 @@ async def find_high_commission_products(keyword: str, category: str = "umum", pl
 async def search_similar_products(query: str, top_k: int = 5) -> list[dict]:
     """Search for similar products in the knowledge base."""
     return await memory_find_similar_products(query=query, top_k=top_k)
+
+
+# ── Multilingual Tools ───────────────────────────────────────
+
+
+@mcp.tool()
+async def translate_to_languages(
+    content: str,
+    source_language: str = "id",
+    target_languages: str = "en,es,pt,ja,ko",
+    platform: str = "tiktok",
+    niche: str = "general",
+    optimize_emojis: bool = True,
+) -> dict:
+    """Translate and culturally adapt content to multiple languages.
+
+    Handles: Indonesian, English, Spanish, Portuguese, Japanese, Korean,
+    Thai, Vietnamese, Hindi, Arabic, Turkish. Platform-specific formatting,
+    CTA localization, trending hashtags, emoji optimization.
+
+    Args:
+        content: Source content (Indonesian recommended as source).
+        source_language: Source language code.
+        target_languages: Comma-separated language codes. E.g. "en,es,pt,ja,ko"
+        platform: tiktok, instagram, facebook, twitter, youtube.
+        niche: general, electronics, fashion, beauty, food.
+        optimize_emojis: Culturally optimize emoji usage.
+
+    Returns: MultilingualPackage with per-language variants.
+    """
+    from MCP.tools.multilingual_tools import translate_content as _tc
+    return await _tc(
+        content=content,
+        source_language=source_language,
+        target_languages=target_languages,
+        platform=platform,
+        niche=niche,
+        optimize_emojis=optimize_emojis,
+    )
+
+
+@mcp.tool()
+async def translate_single(
+    content: str,
+    source_language: str = "id",
+    target_language: str = "en",
+    platform: str = "tiktok",
+    niche: str = "general",
+) -> dict:
+    """Translate content to a single target language with cultural adaptation.
+
+    Returns translated content, localized CTA, trending hashtags, char count/limit.
+    """
+    from MCP.tools.multilingual_tools import translate_single_language as _ts
+    return await _ts(
+        content=content,
+        source_language=source_language,
+        target_language=target_language,
+        platform=platform,
+        niche=niche,
+    )
+
+
+@mcp.tool()
+async def localize_cta_text(
+    cta_text: str,
+    source_language: str = "id",
+    target_language: str = "en",
+    platform: str = "tiktok",
+) -> dict:
+    """Localize a call-to-action for a target language and platform.
+
+    E.g. "Link di bio!" (id) → "Link in bio!" (en) → "¡Enlace en bio!" (es)
+    """
+    from MCP.tools.multilingual_tools import localize_cta as _lc
+    return await _lc(
+        cta_text=cta_text,
+        source_language=source_language,
+        target_language=target_language,
+        platform=platform,
+    )
+
+
+@mcp.tool()
+async def get_language_hashtags(
+    language: str = "en",
+    niche: str = "general",
+    count: int = 5,
+) -> dict:
+    """Get culturally trending hashtags for a language and niche."""
+    from MCP.tools.multilingual_tools import get_trending_hashtags as _ht
+    return await _ht(language=language, niche=niche, count=count)
+
+
+@mcp.tool()
+async def get_char_limits(platform: str = "tiktok", language: str = "") -> dict:
+    """Get character limits for a platform across languages."""
+    from MCP.tools.multilingual_tools import get_platform_char_limits as _cl
+    return await _cl(platform=platform, language=language)
+
+
+@mcp.tool()
+async def list_supported_languages() -> dict:
+    """Get all 11 supported languages for multilingual content."""
+    from MCP.tools.multilingual_tools import get_supported_languages as _sl
+    return await _sl()
+
+
+@mcp.tool()
+async def batch_translate_platforms(
+    content: str,
+    source_language: str = "id",
+    platforms: str = "tiktok,instagram,facebook",
+    niche: str = "general",
+) -> dict:
+    """Translate content for multiple platforms with per-platform formatting.
+
+    Each platform gets language variants with correct char limits and CTAs.
+    """
+    from MCP.tools.multilingual_tools import batch_translate_for_platforms as _bp
+    return await _bp(
+        content=content,
+        source_language=source_language,
+        platforms=platforms,
+        niche=niche,
+    )
+
+
+# ── A/B Stats Engine ────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def create_ab_test_tool(
+    test_name: str,
+    variants: str,
+    niche: str = "general",
+    platform: str = "tiktok",
+) -> dict:
+    """Create an A/B test with multiple content variants.
+
+    Args:
+        test_name: Name for the test.
+        variants: Comma-separated variant descriptions.
+        niche: Product/content niche.
+        platform: Target platform.
+
+    Returns: Test ID, variant IDs, and status.
+    """
+    return await _create_ab_test(
+        test_name=test_name,
+        variants=variants,
+        niche=niche,
+        platform=platform,
+    )
+
+
+@mcp.tool()
+async def update_ab_test_tool(
+    test_id: str,
+    variant_id: str,
+    impressions: int = 0,
+    clicks: int = 0,
+    conversions: int = 0,
+) -> dict:
+    """Update A/B test metrics for a variant. Metrics accumulate across calls.
+
+    Args:
+        test_id: The A/B test ID.
+        variant_id: The variant ID to update.
+        impressions: New impressions to add.
+        clicks: New clicks to add.
+        conversions: New conversions to add.
+
+    Returns: Updated test state with significance results.
+    """
+    return await _update_ab_test(
+        test_id=test_id,
+        variant_id=variant_id,
+        impressions=impressions,
+        clicks=clicks,
+        conversions=conversions,
+    )
+
+
+@mcp.tool()
+async def get_ab_results_tool(test_id: str) -> dict:
+    """Get A/B test results with statistical significance.
+
+    Returns winner, confidence level, lift, and recommendations.
+    """
+    return await _get_ab_results(test_id=test_id)
+
+
+@mcp.tool()
+async def list_ab_tests_tool(status_filter: str = "") -> list[dict]:
+    """List all A/B tests with optional status filter (running/significant/inconclusive)."""
+    return await _list_ab_tests(status_filter=status_filter)
+
+
+@mcp.tool()
+async def promote_ab_winner_tool(test_id: str) -> dict:
+    """Promote the winning variant and retire losers from an A/B test."""
+    return await _promote_ab_winner(test_id=test_id)
+
+
+@mcp.tool()
+async def delete_ab_test_tool(test_id: str) -> dict:
+    """Delete an A/B test."""
+    return await _delete_ab_test(test_id=test_id)
+
+
+@mcp.tool()
+async def calculate_ab_sample_size(
+    baseline_rate: float,
+    mde: float = 0.1,
+    power: float = 0.8,
+) -> dict:
+    """Calculate required sample size per variant for an A/B test.
+
+    Args:
+        baseline_rate: Current conversion/click rate (0-1).
+        mde: Minimum detectable effect as fraction of baseline.
+        power: Statistical power (default 0.8 = 80%).
+
+    Returns: Minimum and recommended sample sizes.
+    """
+    return await _calculate_sample_size(
+        baseline_rate=baseline_rate,
+        mde=mde,
+        power=power,
+    )
+
+
+# ── Voice Cloning Tools ────────────────────────────────────────
+
+
+@mcp.tool()
+async def create_voice_profile_tool(
+    name: str,
+    style: str = "enthusiastic",
+    languages: str = "id,en",
+    avatar_id: str = "",
+) -> dict:
+    """Create a voice profile for consistent AI narration.
+
+    Styles: enthusiastic, calm, professional, funny.
+    Languages: comma-separated codes (id=Indonesian, en=English).
+    """
+    return await _create_voice_profile(
+        name=name, style=style, languages=languages, avatar_id=avatar_id,
+    )
+
+
+@mcp.tool()
+async def generate_voice_narration(
+    text: str,
+    profile_id: str,
+    emotion: str = "neutral",
+    speed: float = 1.0,
+    output_format: str = "mp3",
+    avatar_id: str = "",
+) -> dict:
+    """Generate voice narration using a cloned voice profile.
+
+    Returns TTS parameters (pitch, speed, energy, prosody, emphasis).
+    Emotions: neutral, excited, serious, funny, sad.
+    """
+    return await _generate_voice(
+        text=text, profile_id=profile_id, emotion=emotion,
+        speed=speed, output_format=output_format, avatar_id=avatar_id,
+    )
+
+
+@mcp.tool()
+async def list_all_voice_profiles(avatar_id: str = "") -> dict:
+    """List all voice profiles, optionally filtered by avatar."""
+    return await _list_voice_profiles(avatar_id=avatar_id)
+
+
+@mcp.tool()
+async def get_voice_profile_detail(profile_id: str) -> dict:
+    """Get a voice profile and its usage statistics."""
+    return await _get_voice_profile(profile_id=profile_id)
+
+
+@mcp.tool()
+async def update_voice_profile_tool(
+    profile_id: str,
+    name: str = "",
+    style: str = "",
+    languages: str = "",
+) -> dict:
+    """Update an existing voice profile."""
+    return await _update_voice_profile(
+        profile_id=profile_id, name=name, style=style, languages=languages,
+    )
+
+
+@mcp.tool()
+async def delete_voice_profile_tool(profile_id: str) -> dict:
+    """Delete a voice profile."""
+    return await _delete_voice_profile(profile_id=profile_id)
+
+
+@mcp.tool()
+async def generate_batch_voice_narration(
+    texts: list[str],
+    profile_id: str,
+    emotion: str = "neutral",
+    speed: float = 1.0,
+    output_format: str = "mp3",
+) -> dict:
+    """Generate voice narration for multiple texts at once.
+
+    Useful for batch video production or multi-script campaigns.
+    """
+    return await _generate_batch_voices(
+        texts=texts, profile_id=profile_id, emotion=emotion,
+        speed=speed, output_format=output_format,
+    )
+
+
+@mcp.tool()
+async def generate_voice_ab_variations(
+    text: str,
+    profile_id: str,
+    emotions: str = "neutral,excited,serious",
+    speeds: str = "1.0,1.1",
+    output_format: str = "mp3",
+) -> dict:
+    """Generate multiple voice variations for A/B testing.
+
+    Returns all combinations of emotions x speeds.
+    """
+    return await _generate_voice_variations(
+        text=text, profile_id=profile_id, emotions=emotions,
+        speeds=speeds, output_format=output_format,
+    )
+
+
+@mcp.tool()
+async def get_voice_generation_history(limit: int = 50) -> dict:
+    """Get recent voice generation history."""
+    return await _get_voice_history(limit=limit)
+
+
+@mcp.tool()
+async def get_available_voice_styles() -> dict:
+    """Get available voice style presets and their characteristics."""
+    return await _get_voice_style_presets()
+
+
+@mcp.tool()
+async def validate_voice_profile_health(profile_id: str) -> dict:
+    """Validate a voice profile and check for issues."""
+    return await _validate_voice_profile(profile_id=profile_id)
+
+
+# ── Viral Prediction Tool ──────────────────────────────────────────
+
+
+@mcp.tool()
+async def predict_content_virality(
+    hook: str,
+    script: str = "",
+    platform: str = "tiktok",
+    niche: str = "general",
+) -> dict:
+    """Score content virality before publishing.
+
+    Analyzes 22 features (hook strength, emotional impact, curiosity gap,
+    power words, CTA placement, story arc, etc.) and returns a 0-100 score
+    with predicted reach, engagement rate, best posting time, per-platform
+    scores, and actionable optimization tips.
+    """
+    from MCP.tools.viral_tools import PredictViralityInput
+    input_data = PredictViralityInput(
+        hook=hook, script=script, platform=platform, niche=niche,
+    )
+    result = await _predict_virality(
+        hook=input_data.hook,
+        script=input_data.script,
+        platform=input_data.platform,
+        niche=input_data.niche,
+    )
+    return result.model_dump()
+
+
+# ── Content Remix Engine ────────────────────────────────────────────
+
+
+@mcp.tool()
+async def remix_content(
+    content: str,
+    content_type: str = "script",
+    niche: str = "general",
+    target_platforms: str = "tiktok,instagram,youtube,twitter,facebook",
+) -> dict:
+    """Transform one winning content piece into 10+ platform-specific formats.
+
+    Generates adapted variants for TikTok, Instagram, YouTube, Twitter,
+    Facebook, Blog, Newsletter, and Podcast. Each variant is scored for
+    viral potential and includes platform-appropriate hashtags and CTAs.
+
+    Args:
+        content: Source content (script, hook, or video concept).
+        content_type: "script", "hook", or "video_concept".
+        niche: Content niche for hashtag targeting.
+        target_platforms: Comma-separated platform list.
+
+    Returns: RemixPackage with all variants, scores, and best variant index.
+    """
+    platforms = [p.strip() for p in target_platforms.split(",") if p.strip()]
+    result = await _remix_content(
+        content=content,
+        content_type=content_type,
+        niche=niche,
+        target_platforms=platforms,
+    )
+    return result.model_dump()
+
+
+# ── Trend Monitor ───────────────────────────────────────────────
+
+
+@mcp.tool()
+async def get_trend_alerts(
+    platform: str = "tiktok",
+    niche: str = "general",
+    limit: int = 10,
+) -> dict:
+    """Get real-time trend alerts with velocity scores and urgency levels."""
+    input_data = {"platform": platform, "niche": niche, "limit": limit}
+    return await _monitor_trends(**input_data)
+
+
+# ── Thumbnail Generator ─────────────────────────────────────────
+
+
+@mcp.tool()
+async def auto_generate_thumbnails(
+    product_name: str,
+    niche: str = "general",
+    content_type: str = "product_review",
+    num_variants: int = 3,
+) -> dict:
+    """Generate AI-optimized thumbnail variants with CTR predictions."""
+    input_data = {"product_name": product_name, "niche": niche, "content_type": content_type, "num_variants": num_variants}
+    return await _generate_thumbnails(**input_data)
+
+
+# ── Affiliate Optimizer ─────────────────────────────────────────
+
+
+@mcp.tool()
+async def optimize_affiliate_strategy(
+    current_products: str = "",
+    niche: str = "general",
+    budget: float = 0.0,
+) -> dict:
+    """Find higher commission products and optimize affiliate strategy."""
+    from Services.agents.affiliate_optimizer import AffiliateProduct
+    products = None
+    if current_products.strip():
+        products = [AffiliateProduct(product_id=pid.strip(), name=f"Product {pid.strip()}") for pid in current_products.split(",") if pid.strip()]
+    return await _optimize_affiliate(current_products=products, niche=niche, budget=budget)
+
+
+# ── SEO Engine ──────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def optimize_content_seo(
+    title: str,
+    description: str = "",
+    niche: str = "general",
+    platform: str = "youtube",
+) -> dict:
+    """Optimize content for search rankings with keyword research."""
+    return await _seo_optimize(title=title, description=description, niche=niche, platform=platform)
+
+
+# ── Sentiment Monitor ──────────────────────────────────────────
+
+
+@mcp.tool()
+async def track_brand_sentiment(
+    brand_name: str,
+    platforms: str = "tiktok,instagram,twitter",
+    niche: str = "general",
+) -> dict:
+    """Monitor brand sentiment across platforms. Detect crises and suggest pivots."""
+    return await _monitor_sentiment(brand_name=brand_name, platforms=platforms, niche=niche)
+
+
+# ── Self-Healing Pipeline ──────────────────────────────────────
+
+
+@mcp.tool()
+async def get_self_healing_status(pipeline_id: str = "") -> dict:
+    """Check self-healing pipeline status, failures, and recoveries."""
+    return await _get_pipeline_health(pipeline_id=pipeline_id)
