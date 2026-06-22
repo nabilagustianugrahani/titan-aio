@@ -142,6 +142,17 @@ from MCP.tools.cross_platform_tools import record_platform_metrics, generate_cro
 from MCP.tools.versioning_tools import create_content_version, get_content_versions, revert_content_version, compare_content_versions, update_version_score
 from MCP.tools.batch_processor_tools import create_batch_job, run_batch_job, get_batch_status, pause_batch_job, list_batch_jobs, get_batch_stats
 from MCP.tools.dynamic_pricing_tools import analyze_product_pricing, bulk_price_analysis, get_pricing_recommendations, get_pricing_stats
+from MCP.tools.telegram_tools import configure_telegram_bot, send_telegram_notification, handle_telegram_command, get_telegram_stats
+from MCP.tools.revenue_tools import record_revenue, forecast_revenue, get_revenue_breakdown, get_revenue_stats
+from MCP.tools.advanced_tools import (
+    generate_auto_report, record_report_data, set_total_budget, register_campaign_budget, optimize_budget, get_budget_summary,
+    get_optimal_posting_times, suggest_posting_schedule, record_engagement_data,
+    create_alert_rule, record_performance_metric, get_performance_alerts, acknowledge_alert,
+    generate_content_ideas, get_saved_ideas,
+    add_competitor_watch, check_competitor_metrics, list_competitor_watches,
+    add_brand_to_watch, record_brand_mention, get_brand_mentions, get_sentiment_summary,
+    find_influencers, add_affiliate_account, record_account_earnings, list_affiliate_accounts, get_earnings_summary,
+)
 
 mcp = FastMCP(
     "TITAN AIO",
@@ -1519,3 +1530,234 @@ async def analyze_pricing(product_id: str, base_price: float, commission_rate: f
 async def get_pricing_recommendations_tool() -> list[dict]:
     """Get pricing recommendations for all analyzed products."""
     return await get_pricing_recommendations()
+
+
+# ── Telegram Bot ────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def setup_telegram_bot(bot_token: str, chat_ids: str = "") -> dict:
+    """Configure Telegram bot for notifications."""
+    return await configure_telegram_bot(bot_token=bot_token, chat_ids=chat_ids)
+
+
+@mcp.tool()
+async def send_telegram_alert(title: str, message: str, severity: str = "info") -> dict:
+    """Send notification to Telegram."""
+    return await send_telegram_notification(title=title, message=message, severity=severity)
+
+
+@mcp.tool()
+async def telegram_command(command: str, chat_id: str = "default") -> dict:
+    """Handle a Telegram bot command."""
+    return await handle_telegram_command(command=command, chat_id=chat_id)
+
+
+# ── Revenue Forecasting ─────────────────────────────────────────
+
+
+@mcp.tool()
+async def record_revenue_data(revenue: float, ad_spend: float = 0.0, campaign_id: str = "", platform: str = "", clicks: int = 0, conversions: int = 0) -> dict:
+    """Record revenue data for forecasting."""
+    return await record_revenue(revenue=revenue, ad_spend=ad_spend, campaign_id=campaign_id, platform=platform, clicks=clicks, conversions=conversions)
+
+
+@mcp.tool()
+async def forecast_revenue_data(period: str = "30d") -> dict:
+    """Forecast revenue for 7d/30d/90d."""
+    return await forecast_revenue(period=period)
+
+
+@mcp.tool()
+async def get_revenue_breakdown_data() -> dict:
+    """Get revenue breakdown by platform."""
+    return await get_revenue_breakdown()
+
+
+@mcp.tool()
+async def get_revenue_stats_data() -> dict:
+    """Get overall revenue statistics."""
+    return await get_revenue_stats()
+
+
+# ── Auto Reports ────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def generate_report(report_type: str = "weekly") -> dict:
+    """Generate an automatic performance report."""
+    return await generate_auto_report(report_type=report_type)
+
+
+@mcp.tool()
+async def report_data(category: str, data: str) -> dict:
+    """Record data for report generation."""
+    return await record_report_data(category=category, data=data)
+
+
+# ── Budget Optimizer ────────────────────────────────────────────
+
+
+@mcp.tool()
+async def set_budget(budget: float) -> dict:
+    """Set total advertising budget."""
+    return await set_total_budget(budget=budget)
+
+
+@mcp.tool()
+async def register_campaign_for_budget(campaign_id: str, platform: str, current_budget: float = 0.0, roi: float = 0.0) -> dict:
+    """Register a campaign for budget optimization."""
+    return await register_campaign_budget(campaign_id=campaign_id, platform=platform, current_budget=current_budget, roi=roi)
+
+
+@mcp.tool()
+async def optimize_budget_allocation() -> list[dict]:
+    """Auto-allocate budget for maximum ROI."""
+    return await optimize_budget()
+
+
+@mcp.tool()
+async def budget_summary() -> dict:
+    """Get budget allocation summary."""
+    return await get_budget_summary()
+
+
+# ── Smart Scheduler ─────────────────────────────────────────────
+
+
+@mcp.tool()
+async def optimal_times(platform: str = "tiktok", count: int = 5) -> list[dict]:
+    """Get ML-optimized posting times."""
+    return await get_optimal_posting_times(platform=platform, count=count)
+
+
+@mcp.tool()
+async def suggest_schedule(platform: str = "tiktok", posts_per_day: int = 2) -> list[dict]:
+    """Suggest daily posting schedule."""
+    return await suggest_posting_schedule(platform=platform, posts_per_day=posts_per_day)
+
+
+@mcp.tool()
+async def log_engagement(platform: str, hour: int, day_of_week: str, engagement_rate: float) -> dict:
+    """Record engagement data for scheduling optimization."""
+    return await record_engagement_data(platform=platform, hour=hour, day_of_week=day_of_week, engagement_rate=engagement_rate)
+
+
+# ── Performance Alerts ──────────────────────────────────────────
+
+
+@mcp.tool()
+async def create_alert(name: str, metric: str, condition: str, threshold: float, platform: str = "") -> dict:
+    """Create a performance alert rule."""
+    return await create_alert_rule(name=name, metric=metric, condition=condition, threshold=threshold, platform=platform)
+
+
+@mcp.tool()
+async def log_metric(metric: str, value: float, platform: str = "", campaign_id: str = "") -> dict:
+    """Record a performance metric."""
+    return await record_performance_metric(metric=metric, value=value, platform=platform, campaign_id=campaign_id)
+
+
+@mcp.tool()
+async def active_alerts(limit: int = 20) -> list[dict]:
+    """Get unacknowledged performance alerts."""
+    return await get_performance_alerts(limit=limit)
+
+
+@mcp.tool()
+async def ack_alert(alert_id: str) -> dict:
+    """Acknowledge a performance alert."""
+    return await acknowledge_alert(alert_id=alert_id)
+
+
+# ── Content Ideas ───────────────────────────────────────────────
+
+
+@mcp.tool()
+async def ideas(niche: str = "general", platform: str = "tiktok", count: int = 5) -> list[dict]:
+    """Generate AI content ideas for a niche."""
+    return await generate_content_ideas(niche=niche, platform=platform, count=count)
+
+
+# ── Competitor Monitor ──────────────────────────────────────────
+
+
+@mcp.tool()
+async def watch_competitor(name: str, platform: str, url: str = "") -> dict:
+    """Add a competitor to monitor."""
+    return await add_competitor_watch(name=name, platform=platform, url=url)
+
+
+@mcp.tool()
+async def check_competitor(watch_id: str) -> dict:
+    """Check competitor metrics."""
+    return await check_competitor_metrics(watch_id=watch_id)
+
+
+@mcp.tool()
+async def list_competitors(platform: str = "") -> list[dict]:
+    """List monitored competitors."""
+    return await list_competitor_watches(platform=platform)
+
+
+# ── Social Listener ─────────────────────────────────────────────
+
+
+@mcp.tool()
+async def watch_brand(brand: str) -> dict:
+    """Add brand to social listening."""
+    return await add_brand_to_watch(brand=brand)
+
+
+@mcp.tool()
+async def log_mention(brand: str, platform: str, text: str = "", sentiment: str = "neutral", author: str = "") -> dict:
+    """Record a brand mention."""
+    return await record_brand_mention(brand=brand, platform=platform, text=text, sentiment=sentiment, author=author)
+
+
+@mcp.tool()
+async def brand_mentions(brand: str = "", platform: str = "", sentiment: str = "") -> list[dict]:
+    """Get brand mentions."""
+    return await get_brand_mentions(brand=brand, platform=platform, sentiment=sentiment)
+
+
+@mcp.tool()
+async def brand_sentiment(brand: str = "") -> dict:
+    """Get sentiment summary for a brand."""
+    return await get_sentiment_summary(brand=brand)
+
+
+# ── Influencer Finder ───────────────────────────────────────────
+
+
+@mcp.tool()
+async def find_influencers_tool(niche: str = "general", platform: str = "tiktok", min_followers: int = 0, max_followers: int = 999999999, count: int = 5) -> list[dict]:
+    """Find influencers in a niche."""
+    return await find_influencers(niche=niche, platform=platform, min_followers=min_followers, max_followers=max_followers, count=count)
+
+
+# ── Multi-Account Manager ──────────────────────────────────────
+
+
+@mcp.tool()
+async def add_account(name: str, platform: str, commission_rate: float = 0.0) -> dict:
+    """Add an affiliate account."""
+    return await add_affiliate_account(name=name, platform=platform, commission_rate=commission_rate)
+
+
+@mcp.tool()
+async def log_earnings(account_id: str, earnings: float, clicks: int = 0, conversions: int = 0) -> dict:
+    """Record account earnings."""
+    return await record_account_earnings(account_id=account_id, earnings=earnings, clicks=clicks, conversions=conversions)
+
+
+@mcp.tool()
+async def list_accounts(platform: str = "") -> list[dict]:
+    """List affiliate accounts."""
+    return await list_affiliate_accounts(platform=platform)
+
+
+@mcp.tool()
+async def earnings_summary() -> dict:
+    """Get total earnings across all accounts."""
+    return await get_earnings_summary()
