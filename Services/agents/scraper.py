@@ -1,38 +1,30 @@
 """Scrape Agent — autonomous product discovery & data extraction.
 
-Combines:
-1. Scrapling (63k⭐) — stealth Playwright scraping, bypass anti-bot
-2. ScrapeGraphAI (27k⭐) — AI-powered extraction (no CSS selectors)
-3. Agent-Reach (28k⭐) — social media trend discovery (already adopted)
-
-The agent can:
-- Search products by keyword on Shopee/Tokopedia
-- Extract product details (title, price, rating, sales)
-- Scrape reviews from product pages
-- Discover trending products from social media
-- All without manual URL input.
+Uses HF Space BrowserUse for scraping (zero RAM on VPS).
+Fallback: ScrapingBee cloud browser → simulated data.
 """
 
 from __future__ import annotations
 
-import asyncio
-import json
+import os
 import re
-from typing import Any, Optional
+from typing import Optional
+
+import httpx
 
 
 class ScrapeAgent:
     """Autonomous product scraper — finds products without manual URLs.
 
     Fallback chain:
-    1. Scrapling (if installed) → stealth Playwright scrape
-    2. Agent-Reach (if installed) → social trend discovery
-    3. httpx → direct HTTP (basic fallback)
-    4. Simulated data (zero deps fallback)
+    1. HF Space BrowserUse (primary) → AI-powered browser scraping
+    2. ScrapingBee cloud browser (fallback)
+    3. Simulated data (zero deps fallback)
     """
 
-    def __init__(self, use_scrapling: bool = False, use_reach: bool = False):
-        self.use_scrapling = use_scrapling
+    HF_SPACE_URL = os.environ.get("HF_SCRAPER_URL", "https://hf.space/titan/browser_scraper")
+
+    def __init__(self, use_reach: bool = False):
         self.use_reach = use_reach
 
     async def search_products(
@@ -55,29 +47,38 @@ class ScrapeAgent:
         all_results = []
 
         for p in platforms:
-            # Try ScrapingBee first (cloud browser, zero RAM)
-            results = await self._scrape_with_scrapingbee(p, keyword, max_results // len(platforms))
+            # 1. Try HF Space BrowserUse (primary)
+            results = await self._scrape_with_hf_space(p, keyword, max_results // len(platforms))
             if results:
                 all_results.extend(results)
-            elif self.use_scrapling:
-                results = await self._scrape_with_scrapling(p, keyword, max_results)
-                all_results.extend(results)
             else:
-                results = self._simulate_search(p, keyword, max_results // len(platforms))
-                all_results.extend(results)
+                # 2. Fallback to ScrapingBee
+                results = await self._scrape_with_scrapingbee(p, keyword, max_results // len(platforms))
+                if results:
+                    all_results.extend(results)
+                else:
+                    # 3. Fallback to simulated data
+                    results = self._simulate_search(p, keyword, max_results // len(platforms))
+                    all_results.extend(results)
 
         return all_results[:max_results]
 
     async def get_product_details(self, url: str) -> dict:
         """Extract detailed product info from a product URL."""
-        if self.use_scrapling:
-            return await self._scrape_details(url)
+        # 1. Try HF Space BrowserUse (primary)
+        result = await self._scrape_details_with_hf_space(url)
+        if result and result.get("title") != "Unknown":
+            return result
+        # 2. Fallback to ScrapingBee
+        result = await self._scrape_details_with_scrapingbee(url)
+        if result and result.get("title") != "Unknown":
+            return result
+        # 3. Fallback to simulated data
         return self._simulate_details(url)
 
     async def get_reviews(self, url: str, max_reviews: int = 20) -> list[dict]:
         """Scrape reviews from a product page."""
-        if self.use_scrapling:
-            return await self._scrape_reviews(url, max_reviews)
+        # TODO: Add HF Space review scraping
         return self._simulate_reviews(max_reviews)
 
     async def discover_trending(self, category: str = "") -> list[dict]:
@@ -111,22 +112,42 @@ class ScrapeAgent:
 
         return trends or self._simulate_trends(category)
 
+    # -- HF Space BrowserUse (primary) ---------------------------
+
+    async def _scrape_with_hf_space(self, platform: str, keyword: str, limit: int) -> list[dict]:
+        """Scrape products via HF Space BrowserUse API."""
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    f"{self.HF_SPACE_URL}/api/search",
+                    json={"keyword": keyword, "platform": platform, "max_results": limit},
+                )
+                if resp.status_code != 200:
+                    return []
+                data = resp.json()
+                return data.get("products", [])
+        except Exception:
+            return []
+
+    async def _scrape_details_with_hf_space(self, url: str) -> dict:
+        """Get product details via HF Space BrowserUse API."""
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    f"{self.HF_SPACE_URL}/api/details",
+                    json={"url": url},
+                )
+                if resp.status_code != 200:
+                    return {"title": "Unknown"}
+                return resp.json()
+        except Exception:
+            return {"title": "Unknown"}
+
     # -- ScrapingBee (cloud browser, zero RAM) -------------------
 
     async def _scrape_with_scrapingbee(self, platform: str, keyword: str, limit: int) -> list[dict]:
         """Scrape products using ScrapingBee cloud browser."""
-        import os
-        scrapingbee_key = os.environ.get("SCRAPINGBEE_API_KEY", "")
-        if not scrapingbee_key:
-            try:
-                from dotenv import load_dotenv
-                from pathlib import Path
-                load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
-                scrapingbee_key = os.environ.get("SCRAPINGBEE_API_KEY", "")
-            except Exception:
-                pass
-        if not scrapingbee_key:
-            return []
+        from Services.browser.cloud_browser import CloudBrowser
 
         urls = {
             "shopee": f"https://shopee.co.id/search?keyword={keyword}&sortBy=sales",
@@ -136,26 +157,16 @@ class ScrapeAgent:
         if not url:
             return []
 
+        browser = CloudBrowser()
         try:
-            import httpx
-            async with httpx.AsyncClient(timeout=60) as client:
-                response = await client.get(
-                    "https://app.scrapingbee.com/api/v1/",
-                    params={
-                        "url": url,
-                        "render_js": "true",
-                        "wait": "5000",
-                    },
-                    headers={"Authorization": f"Bearer {scrapingbee_key}"},
-                )
-                if response.status_code != 200:
-                    return []
-
-                html = response.text
-                return self._parse_products_from_html(html, platform, keyword, limit)
-
+            result = await browser.navigate(url, extra_params={"wait": "5000"})
+            if not result.success or not result.html:
+                return []
+            return self._parse_products_from_html(result.html, platform, keyword, limit)
         except Exception:
             return []
+        finally:
+            await browser.close()
 
     def _parse_products_from_html(self, html: str, platform: str, keyword: str, limit: int) -> list[dict]:
         """Parse product data from HTML response."""
@@ -219,6 +230,37 @@ class ScrapeAgent:
 
         return products[:limit]
 
+    async def _scrape_details_with_scrapingbee(self, url: str) -> dict:
+        """Scrape product details using ScrapingBee cloud browser."""
+        from Services.browser.cloud_browser import CloudBrowser
+
+        browser = CloudBrowser()
+        try:
+            result = await browser.navigate(url, extra_params={"wait": "5000"})
+            if not result.success or not result.html:
+                return {"title": "Unknown"}
+            html = result.html
+            # Extract title
+            title_m = re.search(r'<title[^>]*>([^<]+)', html)
+            title = title_m.group(1).strip() if title_m else "Unknown"
+            # Extract price
+            price_m = re.search(r'(?:Rp|IDR)\s*([\d.,]+)', html)
+            price = self._parse_price(price_m.group(0)) if price_m else 0
+            # Extract rating
+            rating_m = re.search(r'rating[^>]*>([\d.]+)', html)
+            rating = float(rating_m.group(1)) if rating_m else None
+            # Extract sales
+            sales_m = re.search(r'(\d[\d.,]*)\s*(?:terjual|sold|sales)', html, re.I)
+            sales = self._parse_sales(sales_m.group(1)) if sales_m else 0
+            return {
+                "title": title, "price": price, "rating": rating,
+                "sales": sales, "url": url, "source": "scrapingbee",
+            }
+        except Exception:
+            return {"title": "Unknown"}
+        finally:
+            await browser.close()
+
     # -- Scrapling (real content fetching) ----------------------
 
     async def _scrape_with_scrapling(self, platform: str, keyword: str, limit: int) -> list[dict]:
@@ -269,7 +311,7 @@ class ScrapeAgent:
 
             return products if products else self._simulate_search(platform, keyword, limit)
 
-        except Exception as e:
+        except Exception:
             return self._simulate_search(platform, keyword, limit)
 
     async def _scrape_details(self, url: str) -> dict:
@@ -278,9 +320,11 @@ class ScrapeAgent:
             from scrapling import AsyncFetcher
             fetcher = AsyncFetcher()
             resp = await fetcher.get(url)
-            if resp is None: return self._simulate_details(url)
+            if resp is None:
+                return self._simulate_details(url)
             root = resp.css
-            if root is None: return self._simulate_details(url)
+            if root is None:
+                return self._simulate_details(url)
 
             el_title = root.css("h1, div[class*='title'], span[class*='name']")
             el_price = root.css("div[class*='price'], span[class*='price']")
@@ -309,9 +353,11 @@ class ScrapeAgent:
             from scrapling import AsyncFetcher
             fetcher = AsyncFetcher()
             resp = await fetcher.get(url)
-            if resp is None: return self._simulate_reviews(max_reviews)
+            if resp is None:
+                return self._simulate_reviews(max_reviews)
             root = resp.css
-            if root is None: return self._simulate_reviews(max_reviews)
+            if root is None:
+                return self._simulate_reviews(max_reviews)
 
             review_elements = root.css("div[class*='review'], div[class*='rating'], li[class*='review']")
             reviews = []

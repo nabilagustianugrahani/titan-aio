@@ -6,7 +6,7 @@ Uses Gemini 2.5 Flash for:
 2. Script writing (UGC-style, sounds like real people)
 3. Caption generation (platform-optimized)
 4. Hashtag generation (trending + relevant)
-5. Video prompt generation (for Google Flow/Kaggle)
+5. Video prompt generation (for Google Flow)
 
 Replaces hardcoded templates with AI-generated content.
 
@@ -21,7 +21,6 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -60,7 +59,7 @@ class UGCCaption:
 @dataclass
 class UGCResult:
     """Complete UGC package."""
-    hooks: list[UGHook]
+    hooks: list[UGCHook]
     scripts: list[UGCScript]
     captions: list[UGCCaption]
     video_prompts: list[str]
@@ -172,7 +171,7 @@ class UGCEngine:
 
     async def _ai_hooks(
         self, client, product: str, category: str, count: int, profile=None
-    ) -> list[UGHook]:
+    ) -> list[UGCHook]:
         """Generate hooks using Gemini."""
         voice_context = ""
         if profile:
@@ -307,7 +306,7 @@ Output JSON array:
     async def _ai_video_prompts(
         self, client, product: str, category: str, profile=None
     ) -> list[str]:
-        """Generate video prompts for Google Flow/Kaggle."""
+        """Generate video prompts for Google Flow."""
         prompt = f"""Generate 5 video prompts for a {category} product called "{product}".
 
 These are for AI video generation (text-to-video).
@@ -373,7 +372,7 @@ Output JSON array of strings:
 
     # ── Fallback Templates ──────────────────────────────────────
 
-    def _template_hooks(self, product: str, count: int) -> list[UGHook]:
+    def _template_hooks(self, product: str, count: int) -> list[UGCHook]:
         """Template hooks (fallback when AI unavailable)."""
         templates = [
             (f"STOP! Jangan beli {product} sebelum nonton ini...", "urgency"),
@@ -402,10 +401,10 @@ Output JSON array of strings:
         for i in range(min(count, 3)):
             style = styles[i % len(styles)]
             scripts.append(UGCScript(
-                hook=f"Stop scrolling! Ini yang kamu butuhin...",
+                hook="Stop scrolling! Ini yang kamu butuhin...",
                 problem="Selama ini gue cari produk yang beneran works...",
                 solution=f"Dan ternyata {product} jawabannya!",
-                demo=f"*show product close-up* Lihat ini, kualitasnya gila...",
+                demo="*show product close-up* Lihat ini, kualitasnya gila...",
                 social_proof="Udah ribuan orang buktiin sendiri.",
                 cta="Link di bio! Diskon terbatas!",
                 full_script=(

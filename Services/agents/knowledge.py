@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select, func
 
 from Database.models import (
-    Campaign, WinningHook, WinningProduct, Metric, KnowledgeEntry, Product,
+    Campaign, WinningHook, Metric, KnowledgeEntry, Product,
 )
 from Database.repository import Repository
 from Services.agents.base import BaseAgent, AgentContext
@@ -19,14 +18,11 @@ class KnowledgeAgent(BaseAgent):
     async def execute(self, ctx: AgentContext, **kwargs: Any) -> dict:
         campaign_repo = Repository(ctx.session, Campaign)
         hook_repo = Repository(ctx.session, WinningHook)
-        metric_repo = Repository(ctx.session, Metric)
         product_repo = Repository(ctx.session, Product)
-        knowledge_repo = Repository(ctx.session, KnowledgeEntry)
 
         # ── Gather data ──
         all_campaigns = await campaign_repo.list_all(limit=200)
         all_hooks = await hook_repo.list_all(limit=500)
-        all_products = await product_repo.list_all(limit=200)
 
         # ── Build category → campaigns mapping ──
         cat_campaigns: dict[str, list] = {}

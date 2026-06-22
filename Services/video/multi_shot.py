@@ -10,12 +10,9 @@ No API key needed beyond what we already have.
 
 from __future__ import annotations
 
-import json
 import subprocess
-import textwrap
 import uuid
 from pathlib import Path
-from typing import Any, Optional
 
 
 class ShotPlanner:

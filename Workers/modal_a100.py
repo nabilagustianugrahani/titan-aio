@@ -25,7 +25,9 @@ image = modal.Image.debian_slim(python_version="3.11").pip_install(
     secrets=[modal.Secret.from_name("titan-hf-token")],
 )
 def generate(prompt: str) -> bytes:
-    import os, torch, io
+    import os
+    import torch
+    import io
     from huggingface_hub import login
     from diffusers import FluxPipeline
 
@@ -63,7 +65,11 @@ def generate(prompt: str) -> bytes:
     secrets=[modal.Secret.from_name("titan-hf-token")],
 )
 def generate_video(script: str) -> bytes:
-    import torch, os, io, uuid, cv2, numpy as np
+    import torch
+    import os
+    import uuid
+    import cv2
+    import numpy as np
     from diffusers import WanPipeline
 
     print(f"GPU: {torch.cuda.get_device_name()}")
@@ -106,7 +112,9 @@ def generate_video(script: str) -> bytes:
 )
 def batch_generate(prompts: list[str]) -> list[bytes]:
     """Generate multiple images in one session — lebih hemat."""
-    import os, torch, io
+    import os
+    import torch
+    import io
     from huggingface_hub import login
     from diffusers import FluxPipeline
 

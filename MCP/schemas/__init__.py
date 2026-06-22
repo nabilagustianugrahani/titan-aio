@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -252,6 +252,7 @@ class CreateAffiliatePackageInput(BaseModel):
     url: str = Field(..., description="Affiliate product URL")
     include_video: bool = False
     include_avatar: bool = False
+    include_image: bool = False
 
 
 class AffiliatePackageOutput(BaseModel):

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -29,9 +28,6 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:////" + (PROJECT_ROOT / "data" / "titan.db").as_posix().removeprefix("/")
 
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
-
     # S3 / Storage
     S3_ENDPOINT: str = "http://localhost:9000"
     S3_ACCESS_KEY: str = "minioadmin"
@@ -46,9 +42,9 @@ class Settings(BaseSettings):
     GDRIVE_CREDENTIALS_FILE: str = str(PROJECT_ROOT / "credentials" / "gdrive.json")
     GDRIVE_FOLDER_ID: str = ""
 
-    # Server
+    # Server — PORT from env (HF Space sets PORT=7860)
     HOST: str = "0.0.0.0"
-    PORT: int = 8080
+    PORT: int = int(os.environ.get("PORT", 8080))
 
     # Generation Models
     IMAGE_MODEL: str = "black-forest-labs/FLUX.1-schnell"
@@ -85,9 +81,14 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def resolve_database_url(cls, v: str) -> str:
-        """Resolve relative SQLite paths to absolute from PROJECT_ROOT."""
+        """Resolve relative SQLite paths to absolute from PROJECT_ROOT.
+        Also ensures PostgreSQL URLs use asyncpg driver prefix."""
         if not isinstance(v, str):
             return v
+        # PostgreSQL: ensure asyncpg driver prefix
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        # SQLite relative path resolution
         if v.startswith("sqlite"):
             idx = v.find(":///")
             if idx != -1:

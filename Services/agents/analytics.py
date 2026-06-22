@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select, func
 
 from Database.models import Metric, Campaign, WinningHook
 from Database.repository import Repository

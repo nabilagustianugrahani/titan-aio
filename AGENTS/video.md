@@ -18,7 +18,7 @@ Generate:
 ## Processing
 1. Parse script into scene segments
 2. Match each scene with visual direction
-3. Dispatch generation to Kaggle video-worker
+3. Dispatch generation to video worker
 4. Assemble segments into final video
 5. Add captions/text overlays
 
@@ -40,7 +40,7 @@ Generate:
 - **Hunyuan Video**: Higher quality, slower generation
 
 ## Dependencies
-- Kaggle video-worker
+- GPU video worker
 - S3 storage
 - UGC Package
 - Creative Package

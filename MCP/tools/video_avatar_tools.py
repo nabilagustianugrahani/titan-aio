@@ -1,31 +1,15 @@
-"""MCP tools for Video and Avatar generation.
-
-Runs on Kaggle T4 GPU via Workers/kaggle_video.py
-"""
+"""MCP tools for Video and Avatar generation."""
 from __future__ import annotations
 
 from Services.orchestrator import CEOAgent
 
 
 async def generate_product_video(product_id: str, script_text: str, model: str = "wan-2-2") -> dict:
-    """Generate a product video using Kaggle T4 GPU.
+    """Generate a product video.
 
     Models: wan-2-2, hunyuan, wan-lip (with lip sync)
     """
     try:
-        from Workers.kaggle_video import KaggleVideoWorker
-        worker = KaggleVideoWorker()
-        result = await worker.generate(script=script_text, model=model)
-        return {
-            "video_id": product_id,
-            "url": result.video_path,
-            "model_used": result.model,
-            "duration_seconds": int(result.duration_sec),
-            "success": result.success,
-            "error": result.error,
-        }
-    except ImportError:
-        # Fallback to CEO agent
         ceo = CEOAgent()
         result = await ceo.video(script=script_text, model=model)
         return {
@@ -33,6 +17,15 @@ async def generate_product_video(product_id: str, script_text: str, model: str =
             "url": result.get("url", ""),
             "model_used": result.get("model_used", model),
             "duration_seconds": result.get("duration_seconds", 30),
+        }
+    except Exception as e:
+        return {
+            "video_id": product_id,
+            "url": "",
+            "model_used": model,
+            "duration_seconds": 30,
+            "success": False,
+            "error": str(e),
         }
 
 

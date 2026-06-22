@@ -425,7 +425,7 @@ def create_kaggle_notebook(
         # Install deps
         {
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "!pip install -q diffusers transformers accelerate torch\n",
                 "!pip install -q opencv-python sentencepiece protobuf\n",
@@ -436,7 +436,7 @@ def create_kaggle_notebook(
         # Check GPU + VRAM
         {
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "import torch, gc\n",
                 "print(f'GPU: {torch.cuda.get_device_name()}')\n",
@@ -452,7 +452,7 @@ def create_kaggle_notebook(
         # Load model (anti-OOM)
         {
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'\n",
                 "torch.cuda.empty_cache()\n",
@@ -486,7 +486,7 @@ def create_kaggle_notebook(
         # Generate video
         {
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 f"print('Generating {num_frames} frames...')\n",
                 f"video = pipe(\n",
@@ -506,7 +506,7 @@ def create_kaggle_notebook(
         # Save video + cleanup
         {
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "import cv2, numpy as np\n",
                 "output_path = '/kaggle/working/titan_video.mp4'\n",
@@ -536,7 +536,7 @@ def create_kaggle_notebook(
         "cells": cells,
         "metadata": {
             "kaggle": {
-                "accelerator": "GPU",
+                "accelerator": "GPU T4 x2",
                 "dataSources": [],
                 "isGpuEnabled": True,
                 "isInternetEnabled": True,

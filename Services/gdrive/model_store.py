@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import os
-import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -38,7 +35,7 @@ class GDriveModelStore:
 
     def __init__(self) -> None:
         self._gdrive = GoogleDriveClient.get_instance()
-        self._cache_root = Path("/kaggle/working/model_cache")
+        self._cache_root = Path("/tmp/titan-model-cache")
 
     def get_cached_path(self, model_key: str) -> Optional[Path]:
         """Check if model is cached locally. Returns path or None."""
@@ -104,7 +101,7 @@ class GDriveModelStore:
         """Get model — from local cache, GDrive, or download fresh.
 
         Priority:
-        1. Local cache (/kaggle/working/model_cache/<key>)
+        1. Local cache (/tmp/titan-model-cache/<key>)
         2. GDrive models folder
         3. Fresh download (huggingface)
         """
@@ -115,7 +112,7 @@ class GDriveModelStore:
             return cached
 
         # 2. Try GDrive
-        print(f"[ModelStore] Not in local cache, checking GDrive...")
+        print("[ModelStore] Not in local cache, checking GDrive...")
         from_gdrive = self.download_from_gdrive(model_key)
         if from_gdrive:
             return from_gdrive
@@ -166,8 +163,7 @@ class GDriveModelStore:
 
 
 async def ensure_model_from_gdrive(model_key: str) -> str | None:
-    """Check GDrive for cached model. Returns path or None.
-    Call this at the start of Kaggle notebooks to skip HF download if cached."""
+    """Check GDrive for cached model. Returns path or None."""
     store = GDriveModelStore()
     path = store.ensure_model(model_key)
     if path:

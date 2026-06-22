@@ -1,14 +1,9 @@
 """
 ViMax Adapter — multi-shot video generation.
 
-Runs on Kaggle T4 GPU. Uses Workers/kaggle_video.py for generation.
-
 ViMax is an agentic video generation framework (github.com/HKUDS/ViMax).
 It chains multiple AI-generated shots into coherent short films with
 storyboarding, character consistency, and voice sync.
-
-This adapter provides a drop-in interface so TITAN AIO can use ViMax
-as its video engine once installed on Kaggle.
 
 Usage:
     from Services.video.vimax_adapter import ViMaxEngine
@@ -19,30 +14,22 @@ Usage:
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Any, Optional
 
 
 class ViMaxEngine:
     """Multi-shot video engine using ViMax.
 
-    Runs on Kaggle T4 GPU via Workers/kaggle_video.py.
-    Falls back to Wan 2.2 if ViMax is not installed.
+    Falls back to single-shot generation if ViMax is not installed.
     """
 
     VIMAX_DIR = Path("/opt/ViMax")
-    KAGGLE_DIR = Path("/kaggle/working")
 
     def __init__(self, use_vimax: bool = False):
-        # Check both local and Kaggle environments
-        self.use_vimax = use_vimax and (
-            self.VIMAX_DIR.exists() or
-            (self.KAGGLE_DIR / "models" / "ViMax").exists()
-        )
-        self.output_dir = Path("/tmp/titan-videos") if not self.KAGGLE_DIR.exists() else self.KAGGLE_DIR / "titan_output"
+        self.use_vimax = use_vimax and self.VIMAX_DIR.exists()
+        self.output_dir = Path("/tmp/titan-videos")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     async def generate(
@@ -100,24 +87,8 @@ class ViMaxEngine:
             return {"error": "ViMax timed out", "model": "vimax"}
 
     async def _fallback(self, script: str, hook: str, duration: int) -> dict:
-        """Fallback to Wan 2.2 single-shot via Kaggle worker."""
+        """Fallback to single-shot generation via MCP tool."""
         try:
-            from Workers.kaggle_video import KaggleVideoWorker
-            worker = KaggleVideoWorker()
-            result = await worker.generate(
-                script=script or hook,
-                model="wan-2-2",
-                duration_sec=duration,
-            )
-            return {
-                "path": result.video_path,
-                "duration": duration,
-                "model": "wan-2-2",
-                "multi_shot": False,
-                "success": result.success,
-            }
-        except ImportError:
-            # Fallback to MCP tool if Kaggle worker not available
             from MCP.tools.video_avatar_tools import generate_product_video
             result = await generate_product_video(
                 product_id=f"vimax-{uuid.uuid4().hex[:12]}",
@@ -130,6 +101,8 @@ class ViMaxEngine:
                 "model": "wan-2-2",
                 "multi_shot": False,
             }
+        except Exception as e:
+            return {"error": str(e), "model": "wan-2-2"}
 
     @staticmethod
     def _parse_shots(script: str) -> list[dict]:
@@ -143,7 +116,7 @@ class ViMaxEngine:
                 "style": "closeup" if i == 0 else "wide" if i == len(scenes) - 1 else "medium",
                 "duration_sec": 4,
             })
-        return shots if shots else [{"shot_id": 1, "description": script[:100], "style": "medium", "duration_sec": duration}]
+        return shots if shots else [{"shot_id": 1, "description": script[:100], "style": "medium", "duration_sec": 4}]
 
     @staticmethod
     def is_available() -> bool:

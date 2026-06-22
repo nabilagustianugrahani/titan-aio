@@ -9,8 +9,7 @@ from pathlib import Path
 _TEST_DB = str(Path(__file__).resolve().parent.parent / "test.db")
 os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:////{_TEST_DB.removeprefix('/')}"
 
-# Import models so metadata registers all tables
-import importlib, sys
+import sys  # noqa: E402
 
 # Ensure fresh reload
 for mod in list(sys.modules.keys()):
@@ -18,20 +17,19 @@ for mod in list(sys.modules.keys()):
         del sys.modules[mod]
 
 # Import ALL models so metadata registers every table before init_db
-from Database.models import Product, Review, Campaign, AffiliateLink, GeneratedAsset
-from Database.models import WinningHook, WinningProduct, WinningCTA, FailedCampaign
-from Database.models import Metric, KnowledgeEntry, AvatarProfile, ProductProfile
+from Database.models import Product  # noqa: E402
+from Database.models import WinningHook  # noqa: E402
+from Database.models import Metric  # noqa: E402
 
 # Now initialize the database (creates all registered tables)
-from Database.connection import init_db, async_session_factory
-import asyncio
+from Database.connection import init_db, async_session_factory  # noqa: E402
+import asyncio  # noqa: E402
 
 asyncio.run(init_db())
 
 
 # ── Seed test data ──────────────────────────────────────────────
 async def _seed():
-    from Database.models import Product, Metric, WinningHook
     from Database.repository import Repository
     from sqlalchemy import delete
 

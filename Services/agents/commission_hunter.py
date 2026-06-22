@@ -19,8 +19,7 @@ Commission rate estimates by category:
 
 from __future__ import annotations
 
-import random
-from typing import Any, Optional
+from typing import Any
 
 from Services.agents.base import BaseAgent, AgentContext
 
@@ -89,7 +88,7 @@ class CommissionHunterAgent(BaseAgent):
         if not keyword:
             trending = await scraper.discover_trending(category=category)
             keywords = self.HIGH_COMMISSION_NICHES.get(category, ["produk terlaris"])
-            keyword = keywords[0]
+            keyword = trending.get("keyword", keywords[0]) if trending else keywords[0]
 
         products = await scraper.search_products(
             keyword=keyword,

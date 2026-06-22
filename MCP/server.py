@@ -49,7 +49,7 @@ from MCP.tools.notion_tools import (
     notion_create_task,
     notion_query_campaigns,
 )
-from MCP.tools.trend_tools import analyze_trend, analyze_competitor, store_winning_hook, evaluate_campaign_finance, decide_growth_action
+from MCP.tools.trend_tools import analyze_trend, analyze_competitor, evaluate_campaign_finance, decide_growth_action, store_winning_hook
 from MCP.tools.memory_tools import memory_store_hook, memory_find_similar_hooks, memory_store_product_knowledge, memory_find_similar_products
 from MCP.tools.publisher_tools import prepare_platform_content, track_campaign_metrics
 from MCP.tools.publisher_v2_tools import (
@@ -695,7 +695,7 @@ async def run_full_pipeline(
     """Run the FULL autonomous pipeline — one URL to published campaign.
 
     Product URL → Analysis → Content → Video (Google Flow) →
-    Post-production (Kaggle) → Publish (6 platforms) → Track
+    Post-production → Publish (6 platforms) → Track
 
     All 18 agents integrated. Fully autonomous.
     """
@@ -737,3 +737,21 @@ async def cloud_browser_screenshot(url: str) -> dict:
     input_data = CloudScreenshotInput(url=url)
     result = await cloud_screenshot_url(input_data)
     return result.model_dump()
+
+
+@mcp.tool()
+async def store_winning_hook_tool(hook_text: str, hook_type: str = "curiosity", campaign_id: str = "") -> dict:
+    """Store a winning hook for future reference."""
+    return await store_winning_hook(hook_text=hook_text, hook_type=hook_type, campaign_id=campaign_id)
+
+
+@mcp.tool()
+async def find_high_commission_products(keyword: str, category: str = "umum", platform: str = "shopee", max_results: int = 5) -> dict:
+    """Find products with highest commission rates for a keyword."""
+    return await find_high_commission(keyword=keyword, category=category, platform=platform, max_results=max_results)
+
+
+@mcp.tool()
+async def search_similar_products(query: str, top_k: int = 5) -> list[dict]:
+    """Search for similar products in the knowledge base."""
+    return await memory_find_similar_products(query=query, top_k=top_k)

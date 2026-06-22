@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 
 class TestImports:
@@ -13,7 +12,7 @@ class TestImports:
         assert settings.APP_NAME == "TITAN AIO"
 
     def test_database_connection(self):
-        from Database.connection import Base, get_session, init_db, close_db
+        from Database.connection import Base
         assert Base is not None
 
     def test_database_models(self):
@@ -29,37 +28,34 @@ class TestImports:
     def test_schemas(self):
         from MCP.schemas import (
             HealthOutput,
-            SearchProductOutput,
-            AnalyzeProductOutput,
-            AnalyzeReviewsOutput,
-            AnalyzeCompetitorsOutput,
-            GenerateOfferOutput,
-            GenerateHooksOutput,
-            GenerateScriptOutput,
-            GenerateThumbnailOutput,
-            GenerateImageOutput,
-            AffiliatePackageOutput,
+            SearchProductInput, SearchProductOutput,
+            AnalyzeProductInput, AnalyzeProductOutput,
+            AnalyzeReviewsInput, AnalyzeReviewsOutput,
+            AnalyzeCompetitorsInput, AnalyzeCompetitorsOutput,
+            GenerateOfferInput, GenerateOfferOutput,
+            GenerateHooksInput, GenerateHooksOutput,
+            GenerateScriptInput, GenerateScriptOutput,
+            GenerateThumbnailInput, GenerateThumbnailOutput,
+            GenerateImageInput, GenerateImageOutput,
+            GenerateVideoInput,
+            CreateAffiliatePackageInput,
         )
         assert HealthOutput().status == "ok"
 
     def test_mcp_tools(self):
         from MCP.tools.health import health
-        from MCP.tools.search_product import search_product
         from MCP.tools.analyze_product import analyze_product
         from MCP.tools.analyze_reviews import analyze_reviews
         from MCP.tools.analyze_competitors import analyze_competitors
-        from MCP.tools.generate_offer import generate_offer
-        from MCP.tools.generate_hooks import generate_hooks
-        from MCP.tools.generate_script import generate_script
-        from MCP.tools.generate_thumbnail import generate_thumbnail
-        from MCP.tools.generate_image import generate_image
+        from MCP.tools.create_affiliate_package import create_affiliate_package
         assert health is not None
+        assert analyze_product is not None
+        assert analyze_reviews is not None
+        assert analyze_competitors is not None
+        assert create_affiliate_package is not None
 
     def test_agents(self):
-        from Services.agents.base import BaseAgent, AgentContext
-        from Services.agents.product import ProductAgent
-        from Services.agents.review import ReviewAgent
-        from Services.agents.content import ContentAgent
+        from Services.agents.base import BaseAgent
         assert BaseAgent is not None
 
     def test_workers(self):

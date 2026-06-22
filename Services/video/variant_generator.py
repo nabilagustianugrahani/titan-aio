@@ -12,17 +12,10 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
-from MCP.schemas import (
-    CreateAffiliatePackageInput,
-    GenerateHooksOutput,
-    GenerateScriptOutput,
-)
-from Services.agents.base import AgentContext
 
 
 @dataclass
@@ -162,7 +155,7 @@ class VariantGenerator:
                 "comparison": f"Upgrade from {product_title} lama ke baru, beda jauh!",
                 "testimonial": f"3 bulan pakai {product_title}, ini honest review",
                 "scarcity": f"Flash sale {product_title} cuma 2 jam lagi!",
-                "transformation": f"Morning routine gue sekarang简单 dan efektif",
+                "transformation": "Morning routine gue sekarang简单 dan efektif",
                 "urgency": f"Last chance! {product_title} diskon ends tonight",
             },
             "minimal": {

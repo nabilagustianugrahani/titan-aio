@@ -44,24 +44,20 @@ _silent = (
     "PIL", "asyncio", "aiosqlite", "alembic",
 )
 for name in _silent:
-    l = logging.getLogger(name)
-    l.handlers.clear()
-    l.setLevel(logging.CRITICAL)
-    l.propagate = False
-    l.addHandler(logging.NullHandler())
+    log = logging.getLogger(name)
+    log.handlers.clear()
+    log.setLevel(logging.CRITICAL)
+    log.propagate = False
+    log.addHandler(logging.NullHandler())
 
 # ── Import project modules ───────────────────────────────────────
-import asyncio
+import asyncio  # noqa: E402
 
 # Import ALL models so metadata registers all tables
-from Database.models import (  # noqa: E402
-    Product, Review, Campaign, AvatarProfile,
-    WinningHook, Metric, KnowledgeEntry,
-)
 from Database.connection import init_db  # noqa: E402
 
 # Disable engine echo at the SQLAlchemy level directly
-import Database.connection as db_conn
+import Database.connection as db_conn  # noqa: E402
 try:
     db_conn.engine.sync_engine._echo = False
 except Exception:

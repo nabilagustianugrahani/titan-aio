@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class AutonomousPipelineInput(BaseModel):
@@ -37,7 +36,7 @@ async def run_autonomous_pipeline(input_data: AutonomousPipelineInput) -> Autono
     """Run the full autonomous pipeline.
 
     Product URL → Analysis → Content → Video (Google Flow) →
-    Post-production (Kaggle) → Publish (6 platforms) → Track
+    Post-production → Publish (6 platforms) → Track
 
     All 18 agents integrated. Fully autonomous.
     """

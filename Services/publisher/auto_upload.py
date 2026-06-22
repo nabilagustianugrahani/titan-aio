@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
-import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 try:
     from browser_use import Browser
@@ -190,7 +187,7 @@ class AutoUploader:
 
         print(f"\n{'='*60}")
         print(f"  Login to {platform.title()} -- complete auth in the browser.")
-        print(f"  After 2FA / login is done, press Enter in this terminal.")
+        print("  After 2FA / login is done, press Enter in this terminal.")
         print(f"{'='*60}\n")
 
         browser = Browser(

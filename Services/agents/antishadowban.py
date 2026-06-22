@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 import random
-from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 
 from Services.agents.base import BaseAgent, AgentContext
 from Services.publisher.anti_shadowban import AntiShadowban

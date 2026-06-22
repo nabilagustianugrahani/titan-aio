@@ -2,19 +2,39 @@
 
 from __future__ import annotations
 
+import os
+import sys
 from pathlib import Path
+
+# Silence noisy loggers before any imports
+import logging
+logging.basicConfig(level=logging.CRITICAL, stream=sys.stderr, force=True)
+for name in ("sqlalchemy", "httpx", "urllib3", "chromadb", "notion_client", "PIL", "asyncio", "aiosqlite", "alembic"):
+    log = logging.getLogger(name)
+    log.handlers.clear()
+    log.setLevel(logging.CRITICAL)
+    log.propagate = False
+    log.addHandler(logging.NullHandler())
+
+# Ensure project root on path
+_project_root = Path(__file__).resolve().parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+# Ensure data dir + DATABASE_URL exist
+(_project_root / "data").mkdir(parents=True, exist_ok=True)
+if "DATABASE_URL" not in os.environ:
+    _db = _project_root / "data" / "titan.db"
+    os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:////{_db.as_posix().removeprefix('/')}"
 
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from Database.connection import init_db, close_db
-from Database.models import Campaign
-from Database.repository import Repository
-from Database.connection import async_session_factory
 from Services.notion.sync import NotionDashboard
 from titan.config import settings
 
@@ -23,6 +43,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# Mount MCP HTTP transport at /mcp
+try:
+    from MCP.server import mcp
+    mcp_app = mcp.http_app(transport="streamable-http", path="/mcp")
+    app.mount("/mcp", mcp_app)
+except Exception:
+    pass  # MCP HTTP mount is optional — fallback to standalone mode
 
 templates_dir = PROJECT_ROOT / "titan" / "templates"
 static_dir = PROJECT_ROOT / "titan" / "static"
@@ -49,6 +77,16 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": "0.1.0"}
+
+
+@app.get("/keepalive")
+async def keepalive():
+    """Keep-alive endpoint for HF Spaces sleep prevention.
+
+    External cron (cron-job.org) pings this every 5 minutes.
+    """
+    from datetime import datetime
+    return {"status": "alive", "timestamp": datetime.utcnow().isoformat()}
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -163,6 +201,75 @@ async def run_cycle():
         return {"status": result.get("status", "error"), "steps": list(result.get("steps", {}).keys()), "campaign_id": result.get("steps", {}).get("create", {}).get("campaign_id", "")}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/search")
+async def search(q: str = "") -> dict:
+    """Search campaigns, tasks, and knowledge by query string."""
+    if not q:
+        return {"campaigns": [], "tasks": [], "knowledge": []}
+    db = NotionDashboard()
+    campaigns = db.list_active_campaigns(limit=50)
+    tasks = db.list_pending_tasks(limit=50)
+    knowledge = db.query_knowledge(limit=50)
+    ql = q.lower()
+    return {
+        "campaigns": [c for c in campaigns if ql in (c.get("name", "") + c.get("product", "")).lower()],
+        "tasks": [t for t in tasks if ql in (t.get("title", "") or "").lower()],
+        "knowledge": [k for k in knowledge if ql in (k.get("title", "") + k.get("pattern", "")).lower()],
+    }
+
+
+@app.get("/api/campaign/{campaign_id}")
+async def campaign_detail(campaign_id: str) -> dict:
+    """Get single campaign detail."""
+    campaigns = NotionDashboard().list_active_campaigns(limit=100)
+    for c in campaigns:
+        if c.get("id") == campaign_id or c.get("campaign_id") == campaign_id:
+            return c
+    return JSONResponse({"error": "Campaign not found"}, status_code=404)
+
+
+@app.post("/api/task/{task_id}/status")
+async def update_task_status(task_id: str, request: Request) -> dict:
+    """Update task status."""
+    body = await request.json()
+    status = body.get("status", "Done")
+    db = NotionDashboard()
+    result = db.update_task_status(task_id, status)
+    return result
+
+
+@app.get("/api/dashboard/stream")
+async def dashboard_stream() -> StreamingResponse:
+    """SSE endpoint — emits stats JSON every 15 seconds."""
+    import json as _json
+    import asyncio
+
+    async def event_generator():
+        while True:
+            try:
+                db = NotionDashboard()
+                campaigns = db.list_active_campaigns(limit=50)
+                tasks = db.list_pending_tasks(limit=50)
+                knowledge = db.query_knowledge(limit=50)
+                total_revenue = sum(c.get("revenue", 0) or 0 for c in campaigns)
+                payload = {
+                    "total_revenue": round(total_revenue),
+                    "active_campaigns": len(campaigns),
+                    "pending_tasks": len(tasks),
+                    "total_knowledge": len(knowledge),
+                }
+            except Exception:
+                payload = {"total_revenue": 0, "active_campaigns": 0, "pending_tasks": 0, "total_knowledge": 0}
+            yield f"data: {_json.dumps(payload)}\n\n"
+            await asyncio.sleep(15)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+    )
 
 
 def main():

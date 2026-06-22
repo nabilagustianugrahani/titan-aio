@@ -49,7 +49,7 @@ class ProductAgent(BaseAgent):
         affiliate_score = min(round(commission_score + price_range_score + demand_score), 100)
 
         # Competition score — lower = more competition (inverted)
-        comp_map = {"low": 85, "medium": 60, "low": 85, "medium": 60, "high": 35}
+        comp_map = {"low": 85, "medium": 60, "high": 35}
         base_score = comp_map.get(p.competition_level or "medium", 60)
         sales_density = min((p.total_sales or 100) / 1000 * 15, 15)  # more sales = more competition
         competition_score = max(round(base_score - sales_density), 0)

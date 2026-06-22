@@ -1,7 +1,6 @@
 """Google Flow (VideoFX) — API-based video generation.
 
 Uses Google GenAI SDK (no browser needed).
-Falls back to Kaggle Wan 2.2 if API unavailable.
 
 Usage:
     from Services.video.google_flow import GoogleFlowGenerator
@@ -23,14 +22,14 @@ from typing import Optional
 class FlowResult:
     video_path: str
     url: str
-    source: str  # "google_veo" | "kaggle_wan" | "none"
+    source: str  # "google_veo" | "none"
     success: bool
     error: Optional[str] = None
     credits_used: int = 0
 
 
 class GoogleFlowGenerator:
-    """Generate videos using Google AI (Veo 2) or fallback to Kaggle.
+    """Generate videos using Google AI (Veo 2).
 
     No browser automation — pure API calls.
     Safe for VPS (no memory issues).
@@ -66,27 +65,12 @@ class GoogleFlowGenerator:
         duration: str = "5s",
         aspect_ratio: str = "16:9",
     ) -> dict:
-        """Generate a video.
-
-        Strategy:
-        1. Try Google Veo 2 API (high quality)
-        2. Fallback to Kaggle Wan 2.2 (free, local)
+        """Generate a video using Google Veo 2 API.
 
         Returns:
             Dict with video_path, url, source, success
         """
-        # 1. Try Google Veo 2
         result = await self._generate_veo(prompt, style, duration, aspect_ratio)
-        if result.success:
-            return {
-                "video_path": result.video_path,
-                "url": result.url,
-                "source": "google_veo",
-                "success": True,
-            }
-
-        # 2. Fallback to Kaggle
-        result = await self._generate_kaggle(prompt)
         return {
             "video_path": result.video_path,
             "url": result.url,
@@ -147,26 +131,3 @@ class GoogleFlowGenerator:
                 success=False, error=str(e),
             )
 
-    async def _generate_kaggle(self, prompt: str) -> FlowResult:
-        """Fallback: generate video using Kaggle Wan 2.2."""
-        try:
-            from Workers.kaggle_video import KaggleVideoWorker
-            worker = KaggleVideoWorker()
-            result = await worker.generate(
-                script=prompt,
-                model="wan-2-2",
-                resolution=(512, 512),
-                num_frames=81,
-            )
-            return FlowResult(
-                video_path=result.video_path if result.success else "",
-                url="",
-                source="kaggle_wan",
-                success=result.success,
-                error=result.error,
-            )
-        except Exception as e:
-            return FlowResult(
-                video_path="", url="", source="kaggle_wan",
-                success=False, error=str(e),
-            )

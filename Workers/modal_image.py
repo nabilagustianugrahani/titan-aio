@@ -22,7 +22,7 @@ def generate(prompt: str) -> bytes:
     from diffusers import StableDiffusion3Pipeline
 
     print(f"GPU: {torch.cuda.get_device_name()}")
-    print(f"Loading SD3.5 Medium...")
+    print("Loading SD3.5 Medium...")
 
     pipe = StableDiffusion3Pipeline.from_pretrained(
         "stabilityai/stable-diffusion-3.5-medium",

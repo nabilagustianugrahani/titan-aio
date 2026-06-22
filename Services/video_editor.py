@@ -1,15 +1,13 @@
 """
 TITAN AIO — Video Editor
 FFmpeg-based: captions, voiceover, product overlay, CTA.
-Runs anywhere FFmpeg is installed (local, Kaggle T4, VPS).
+Runs anywhere FFmpeg is installed.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
-import tempfile
 import textwrap
 import uuid
 from pathlib import Path
@@ -171,8 +169,8 @@ class VideoEditor:
             "-f", "lavfi",
             "-i", f"color=c=#1a1a2e:s=1080x1920:d={duration}:r=30",
             "-vf",
-            f"drawbox=x=0:y=0:w=1080:h=1920:color=#16213e@0.5:t=fill,"
-            f"drawtext=text='':fontsize=10",
+            "drawbox=x=0:y=0:w=1080:h=1920:color=#16213e@0.5:t=fill,"
+            "drawtext=text='':fontsize=10",
             "-c:v", "libx264",
             "-preset", "ultrafast",
             "-pix_fmt", "yuv420p",

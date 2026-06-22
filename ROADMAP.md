@@ -9,7 +9,7 @@
 - [ ] Review Agent — extract pain points, objections, benefits
 - [ ] UGC Agent — generate 10 hooks + 10 scripts
 - [ ] Creative Agent — thumbnail concept + storyboard
-- [ ] Image Generation — FLUX pipeline via Kaggle worker
+- [ ] Image Generation — FLUX pipeline via worker
 - [ ] CLI/API input: product URL → affiliate package output
 
 ### Acceptance Criteria
@@ -47,7 +47,7 @@ Output: Product Analysis + Review Summary + 10 Hooks + 10 Scripts + Thumbnail + 
 - [ ] Avatar Agent — AI spokesperson with consistent character
 - [ ] Product LoRA training pipeline (Kohya/SimpleTuner)
 - [ ] LoRA policy enforcement (train only if usage_count > 20)
-- [ ] Kaggle video-worker setup
+- [ ] Video worker setup
 
 ### Duration Estimate
 6–8 weeks
@@ -84,5 +84,5 @@ Output: Product Analysis + Review Summary + 10 Hooks + 10 Scripts + Thumbnail + 
 1. **Revenue first** — every phase must unblock revenue generation.
 2. **No premature optimization** — build what's needed now.
 3. **Iterate fast** — ship MVP, then layer intelligence.
-4. **Kaggle is infra** — never put business logic in workers.
+4. **Workers are infra** — never put business logic in workers.
 5. **Data is equity** — every campaign enriches the knowledge base.

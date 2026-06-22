@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 
 from MCP.schemas import (
@@ -69,9 +70,6 @@ async def create_affiliate_package(
     thumbnail = await generate_thumbnail(
         GenerateThumbnailInput(product_id=product.product_id, style="bold")
     )
-    image = await generate_image(
-        GenerateImageInput(prompt=f"Product image for {product.title}")
-    )
 
     result = AffiliatePackageOutput(
         product=product,
@@ -81,20 +79,39 @@ async def create_affiliate_package(
         hooks=hooks,
         scripts=scripts,
         thumbnail=thumbnail,
-        image=image,
+        image=None,
         campaign_id=campaign_id,
     )
 
+    # Heavy generation (image/video) — fire-and-forget, non-blocking
+    if input_data.include_image:
+        try:
+            image = await asyncio.wait_for(
+                generate_image(GenerateImageInput(prompt=f"Product image for {product.title}")),
+                timeout=10,
+            )
+            result.image = image
+        except asyncio.TimeoutError:
+            print("⚠️ Image gen timed out — using placeholder")
+
     if input_data.include_video and scripts.scripts:
-        video = await generate_video(
-            GenerateVideoInput(script=scripts.scripts[0].full_script)
-        )
-        result.video = video
+        try:
+            video = await asyncio.wait_for(
+                generate_video(GenerateVideoInput(script=scripts.scripts[0].full_script)),
+                timeout=15,
+            )
+            result.video = video
+        except asyncio.TimeoutError:
+            print("⚠️ Video gen timed out — using placeholder")
 
     if input_data.include_avatar:
-        avatar = await generate_avatar(
-            GenerateAvatarInput(persona_name="AI Spokesperson")
-        )
-        result.avatar = avatar
+        try:
+            avatar = await asyncio.wait_for(
+                generate_avatar(GenerateAvatarInput(persona_name="AI Spokesperson")),
+                timeout=10,
+            )
+            result.avatar = avatar
+        except asyncio.TimeoutError:
+            print("⚠️ Avatar gen timed out — using placeholder")
 
     return result

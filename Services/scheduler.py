@@ -52,7 +52,7 @@ class PostingScheduler:
         self._running = False
         self._stats["ended_at"] = datetime.utcnow().isoformat()
         print(f"\n{'=' * 50}")
-        print(f"🏁 SCHEDULER COMPLETE")
+        print("🏁 SCHEDULER COMPLETE")
         print(f"{'=' * 50}")
         return self._stats
 

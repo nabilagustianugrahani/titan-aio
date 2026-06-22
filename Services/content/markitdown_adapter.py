@@ -20,9 +20,7 @@ Then:
 from __future__ import annotations
 
 import subprocess
-import tempfile
 from pathlib import Path
-from typing import Any, Optional
 
 
 class MarkItDownEngine:

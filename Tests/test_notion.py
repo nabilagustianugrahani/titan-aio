@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 
 class TestNotionClient:
@@ -58,7 +57,6 @@ class TestNotionClient:
             notion_save_campaign,
             notion_save_knowledge,
             notion_create_task,
-            notion_query_campaigns,
         )
         sig = inspect.signature(notion_save_campaign)
         params = list(sig.parameters.keys())

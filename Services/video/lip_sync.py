@@ -1,8 +1,6 @@
 """
 Lip Sync Engine — voice-driven face animation.
 
-Runs on Kaggle T4 GPU via Workers/kaggle_video.py
-
 Supports:
 - Wav2Lip (primary): high-quality lip sync from audio + face image
 - SadTalker (fallback): head movement + lip sync from single image
@@ -17,7 +15,6 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-import os
 import subprocess
 import uuid
 from dataclasses import dataclass
@@ -90,8 +87,7 @@ class LipSyncEngine:
 
         Checks:
         1. Local model directory
-        2. Kaggle environment (/kaggle/working/)
-        3. pip installed package
+        2. pip installed package
         """
         # Check local models
         wav2lip_path = self.MODELS_DIR / "Wav2Lip"
@@ -101,14 +97,6 @@ class LipSyncEngine:
         sadtalker_path = self.MODELS_DIR / "SadTalker"
         if sadtalker_path.exists():
             return "sadtalker"
-
-        # Check Kaggle environment
-        kaggle_models = Path("/kaggle/working/models")
-        if kaggle_models.exists():
-            if (kaggle_models / "Wav2Lip").exists():
-                return "wav2lip"
-            if (kaggle_models / "SadTalker").exists():
-                return "sadtalker"
 
         # Check if installed via pip
         try:

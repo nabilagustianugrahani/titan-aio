@@ -1,0 +1,104 @@
+{
+  "benchmarks": [
+    {
+      "name": "health",
+      "category": "mcp_tool",
+      "elapsed_ms": 153.83,
+      "avg_ms": 51.27666666666667,
+      "mem_peak_kb": 0.0,
+      "success": true,
+      "error": "",
+      "iterations": 3
+    },
+    {
+      "name": "generate_offer",
+      "category": "mcp_tool",
+      "elapsed_ms": 50.4,
+      "avg_ms": 16.8,
+      "mem_peak_kb": 0.0,
+      "success": true,
+      "error": "",
+      "iterations": 3
+    },
+    {
+      "name": "generate_hooks",
+      "category": "mcp_tool",
+      "elapsed_ms": 144.62,
+      "avg_ms": 48.20666666666667,
+      "mem_peak_kb": 0.0,
+      "success": true,
+      "error": "",
+      "iterations": 3
+    },
+    {
+      "name": "generate_script",
+      "category": "mcp_tool",
+      "elapsed_ms": 45.53,
+      "avg_ms": 15.176666666666668,
+      "mem_peak_kb": 0.0,
+      "success": true,
+      "error": "",
+      "iterations": 3
+    },
+    {
+      "name": "ProductAgent",
+      "category": "agent",
+      "elapsed_ms": 55.15,
+      "avg_ms": 18.383333333333333,
+      "mem_peak_kb": 252.8,
+      "success": true,
+      "error": "",
+      "iterations": 3
+    },
+    {
+      "name": "ReviewAgent",
+      "category": "agent",
+      "elapsed_ms": 80.65,
+      "avg_ms": 26.883333333333336,
+      "mem_peak_kb": 106.3,
+      "success": true,
+      "error": "",
+      "iterations": 3
+    },
+    {
+      "name": "ContentAgent",
+      "category": "agent",
+      "elapsed_ms": 52.71,
+      "avg_ms": 17.57,
+      "mem_peak_kb": 70.4,
+      "success": true,
+      "error": "",
+      "iterations": 3
+    },
+    {
+      "name": "OfferAgent",
+      "category": "agent",
+      "elapsed_ms": 1.66,
+      "avg_ms": 0.5533333333333333,
+      "mem_peak_kb": 20.8,
+      "success": true,
+      "error": "",
+      "iterations": 3
+    },
+    {
+      "name": "full_pipeline",
+      "category": "full_pipeline",
+      "elapsed_ms": 261.92,
+      "avg_ms": 87.30666666666667,
+      "mem_peak_kb": 0.0,
+      "success": true,
+      "error": "",
+      "iterations": 3
+    }
+  ],
+  "summary": {
+    "total_time_ms": 846.47,
+    "total_benchmarks": 9,
+    "passed": 9,
+    "failed": 0,
+    "memory": {
+      "vms_mb": 140.5,
+      "rss_mb": 59.5
+    }
+  }
+}

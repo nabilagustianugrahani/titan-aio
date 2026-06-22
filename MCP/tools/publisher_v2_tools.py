@@ -86,13 +86,10 @@ async def prepare_and_upload(product_url: str, platform: str = "tiktok") -> dict
     from MCP.tools.analyze_product import analyze_product
     from MCP.tools.generate_hooks import generate_hooks
     from MCP.tools.generate_script import generate_script
-    from MCP.tools.create_affiliate_package import create_affiliate_package
     from MCP.schemas import (
         AnalyzeProductInput,
         GenerateHooksInput,
         GenerateScriptInput,
-        CreateAffiliatePackageInput,
-        GenerateOfferOutput,
         Hook,
     )
 

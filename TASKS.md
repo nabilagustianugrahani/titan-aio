@@ -16,7 +16,7 @@
 - [x] Configure PostgreSQL connection (asyncpg)
 - [x] Configure ChromaDB vector store
 - [x] Set up S3-compatible storage client
-- [ ] Dockerize development environment
+- [x] Dockerize development environment
 
 ### MCP Tools
 - [x] Implement `health()` tool
@@ -38,10 +38,8 @@
 - [x] Build **Creative Agent** — thumbnail concepts + shot lists
 
 ### Generation
-- [x] Set up Kaggle image-worker with FLUX Schnell
-- [x] Set up Kaggle image-worker with FLUX Dev
 - [x] Wire Generation Router to dispatch image jobs
-- [x] Implement S3 upload from Kaggle worker
+- [x] Implement S3 upload from worker
 
 ### Orchestration
 - [x] Build **CEO Agent** — LangGraph workflow for MVP
@@ -78,9 +76,6 @@
 - [x] Build **Avatar Agent** — AI spokesperson with character consistency
 
 ### Generation
-- [x] Set up Kaggle video-worker with Wan 2.2
-- [x] Set up Kaggle video-worker with Hunyuan Video
-- [x] Set up Kaggle lora-worker with Kohya/SimpleTuner
 - [x] Implement LoRA policy (train only if usage_count > 20)
 - [x] Implement reference-image fallback for low-usage products
 
@@ -108,8 +103,8 @@
 - [x] Write test suite (unit + integration) — 67/67 passing
 - [x] Document every module (AGENTS/ + .titan/)
 - [x] Create Kaggle notebook template
-- [ ] Set up CI/CD pipeline
-- [ ] Performance benchmark: end-to-end package generation time
+- [x] Set up CI/CD pipeline
+- [x] Performance benchmark: end-to-end package generation time
 
 ---
 
@@ -117,9 +112,7 @@
 
 | # | Task | Est. Time |
 |---|------|-----------|
-| 1 | **Deploy Video Worker to Kaggle** — paste `Workers/kaggle_video_notebook.py` into new Kaggle notebook → Run on T4 | 5 min |
-| 2 | **Deploy LoRA Worker to Kaggle** — paste `Workers/kaggle_lora_notebook.py` into new Kaggle notebook → Run on T4 | 5 min |
-| 3 | **Register Shopee/Tokopedia Affiliate Account** — get API keys → add to `.env` | 30 min |
-| 4 | **Set up Notion Dashboard** — create 3 databases → add IDs to `.env` | 30 min |
-| 5 | **Deploy to Production VPS** — DigitalOcean / Linode / Railway | 1 hour |
-| 6 | **Run Real Campaign Test** — real URL → publish → measure ROI | 1 hour |
+| 1 | **Register Shopee/Tokopedia Affiliate Account** — get API keys → add to `.env` | 30 min |
+| 4 | ~~**Set up Notion Dashboard**~~ — ✅ Done (3 databases configured) | — |
+| 5 | ~~**Deploy to Production VPS**~~ — ✅ Done (systemd service active, port 8080) | — |
+| 6 | **Run Real Campaign Test** — real URL → publish → measure ROI (blocked by #3: Shopee/Tokopedia keys) | 1 hr |

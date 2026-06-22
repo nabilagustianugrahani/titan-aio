@@ -2,7 +2,7 @@
 
 ## System Overview
 
-Titan AIO is orchestrated by a **CEO Agent** that routes work through specialized sub-agents and dispatches generation tasks to **Kaggle Workers** via a **Generation Router**.
+Titan AIO is orchestrated by a **CEO Agent** that routes work through specialized sub-agents and dispatches generation tasks to **GPU Workers** via a **Generation Router**.
 
 ```
 ┌─────────────┐
@@ -39,7 +39,7 @@ Titan AIO is orchestrated by a **CEO Agent** that routes work through specialize
        ▼
 ┌──────────────────────────────────────────────────┐
 │              Generation Router                    │
-│  (Load balancer — route to available Kaggle)     │
+│  (Load balancer — route to available GPU worker) │
 └────┬─────────┬──────────┬────────────────────────┘
      │         │          │
      ▼         ▼          ▼
@@ -47,7 +47,7 @@ Titan AIO is orchestrated by a **CEO Agent** that routes work through specialize
 │ Image  │ │ Video  │ │ LoRA   │
 │ Worker │ │ Worker │ │ Worker │
 └────────┘ └────────┘ └────────┘
-(Kaggle T4) (Kaggle T4) (Kaggle A100)
+(GPU Worker) (GPU Worker) (GPU Worker)
 ```
 
 ---
@@ -71,7 +71,7 @@ User URL
 ```
 Creative Agent submits job
   → Generation Router enqueues to Redis
-  → Kaggle Worker polls Redis
+  → GPU Worker polls Redis
   → Worker runs FLUX / Wan / Kohya
   → Worker uploads result to S3
   → Generation Router updates job status
@@ -182,13 +182,13 @@ database/
 | Image Gen | FLUX Schnell/Dev | Fast, open, quality output |
 | Video Gen | Wan 2.2 / Hunyuan | Open models, good short-form quality |
 | LoRA Training | Kohya / SimpleTuner | Mature tooling for product fine-tuning |
-| GPU Workers | Kaggle (T4/A100) | Free tier for generation, usage-based |
+| GPU Workers | Remote workers | Free tier for generation, usage-based |
 
 ---
 
 ## Security & Isolation
 
-- Kaggle workers run **only generation code** — no business logic, no API keys for affiliate networks.
+- GPU workers run **only generation code** — no business logic, no API keys for affiliate networks.
 - All secrets (API keys, DB credentials) stored in environment variables, never in code.
 - MCP tools validate input at schema layer.
 - S3 access via signed URLs with expiration.

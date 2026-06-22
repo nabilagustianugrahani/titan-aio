@@ -12,7 +12,7 @@
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest Tests/ -v        # 66 tests
+python -m pytest Tests/ -v        # 67 tests
 python -m titan.main               # Dashboard → http://localhost:8080/dashboard
 ```
 
@@ -32,7 +32,7 @@ INPUT (keyword) → Scrape Agent → Product Agent → Review Agent
 → Analytics → Memory → Optimization
 ```
 
-## Agents (22)
+## Agents (20)
 
 | Agent | File | Function |
 |-------|------|----------|
@@ -109,7 +109,6 @@ CEO Full Pipeline  68ms  ✅
 | Notion | ✅ Live | Campaigns, Knowledge, Tasks DBs |
 | Google Drive | ✅ Live | 5TB, asset storage + model cache |
 | MongoDB Atlas | ✅ Connected | `titan_aio` cluster |
-| Kaggle | ✅ Deployed | FLUX, Wan 2.2, LoRA workers (T4) |
 | BrowserUse | ✅ Ready | Auto-upload 6 platforms |
 | Scrapling | ✅ Installed | Product scraping |
 | Playwright | ✅ Ready | Browser automation |
@@ -135,7 +134,7 @@ TITAN-AIO/
 │   ├── mongodb/           ← Atlas client
 │   ├── memory/            ← ChromaDB vector store
 │   └── publisher/         ← Auto-upload + anti-shadowban
-├── Workers/               ← Kaggle notebooks (FLUX, Wan 2.2)
+├── Workers/               ← GPU worker dispatchers
 ├── Database/              ← ORM + repository (37 models)
 ├── Tests/                 ← 66 tests + benchmark
 └── AGENTS/                ← Agent documentation

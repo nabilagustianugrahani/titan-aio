@@ -19,7 +19,7 @@ import time
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal
+from typing import Literal
 
 from langgraph.graph import END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
@@ -32,8 +32,6 @@ from Services.agents.offer import OfferAgent
 from Services.agents.content import ContentAgent
 from Services.agents.affiliate import AffiliateAgent
 from Services.agents.publisher import PublisherAgent
-from Services.agents.antishadowban import AntiShadowbanAgent
-from Services.agents.commission_hunter import CommissionHunterAgent
 from Services.agents.trend import TrendAgent
 from Services.agents.analytics import AnalyticsAgent
 from Services.agents.message_bus import get_bus
@@ -140,7 +138,6 @@ async def run_node(state: GraphState, node_name: str, fn, **kwargs) -> dict:
 # ── Nodes ──────────────────────────────────────────────────────
 
 async def discover_product(state: GraphState) -> dict:
-    phone = CampaignPhase.DISCOVER
     if state.get("url"):
         from MCP.tools.scraper_tools import get_product_details_data
         result = await get_product_details_data(state["url"])
@@ -205,7 +202,7 @@ async def generate_offer(state: GraphState) -> dict:
     from MCP.schemas import AnalyzeProductOutput
     pa = AnalyzeProductOutput(product_id=product.get("product_id", ""), title=product.get("title", "Product"),
                               price=product.get("price", 0), url=product.get("url", ""))
-    result = await agent(product=pa)
+    result = await agent(product=pa, reviews=reviews, competitors=competitors)
     get_bus().publish("offer.created", {"angle": result.primary_angle}, "OfferAgent")
     return {"offer": {"primary_angle": result.primary_angle, "value_proposition": result.value_proposition,
                       "cta": result.recommended_cta, "target_audience": result.target_audience,
@@ -409,7 +406,6 @@ async def run_batch(urls: list[str]) -> list[dict]:
 
 async def run_continuous(interval_minutes: int = 60, max_cycles: int = 0) -> list[dict]:
     """Run campaigns continuously with keyword rotation."""
-    import random
     keywords = ["power bank", "skincare", "hijab", "vitamin C", "snack sehat", "tas wanita", "jam tangan", "handmade", "kopi", "body care"]
     categories = ["elektronik", "kecantikan", "fashion", "kesehatan", "makanan", "fashion", "hobi", "hobi", "makanan", "kecantikan"]
     results = []

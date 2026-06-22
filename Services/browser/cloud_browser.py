@@ -17,7 +17,6 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
 import os
 from dataclasses import dataclass
 from typing import Optional
@@ -109,18 +108,18 @@ class CloudBrowser:
 
     # ── ScrapingBee ──────────────────────────────────────────────
 
-    async def _scrapingbee_navigate(self, url: str) -> BrowserResult:
+    async def _scrapingbee_navigate(self, url: str, extra_params: dict | None = None) -> BrowserResult:
         """Navigate using ScrapingBee API."""
         if not self._scrapingbee_key:
             return BrowserResult(success=False, error="No SCRAPINGBEE_API_KEY")
 
         try:
+            params = {"url": url, "render_js": "true"}
+            if extra_params:
+                params.update(extra_params)
             response = await self._client.get(
                 "https://app.scrapingbee.com/api/v1/",
-                params={
-                    "url": url,
-                    "render_js": "true",
-                },
+                params=params,
                 headers={"Authorization": f"Bearer {self._scrapingbee_key}"},
             )
             if response.status_code == 200:
@@ -141,7 +140,7 @@ class CloudBrowser:
 
     # ── Unified API ──────────────────────────────────────────────
 
-    async def navigate(self, url: str) -> BrowserResult:
+    async def navigate(self, url: str, extra_params: dict | None = None) -> BrowserResult:
         """Navigate to URL using best available provider.
 
         Fallback chain: BrowserCat → ScrapingBee
@@ -152,7 +151,7 @@ class CloudBrowser:
             return result
 
         # 2. Try ScrapingBee
-        result = await self._scrapingbee_navigate(url)
+        result = await self._scrapingbee_navigate(url, extra_params=extra_params)
         if result.success:
             return result
 

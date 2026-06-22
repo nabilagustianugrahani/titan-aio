@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from MCP.schemas import AffiliatePackageOutput
 import httpx
@@ -245,14 +245,14 @@ class NotionDashboard:
         if not db_id:
             return []
 
-        filter_data = None
+        query_body: dict = {"page_size": limit}
         if category:
-            filter_data = {
+            query_body["filter"] = {
                 "property": "Category",
                 "select": {"equals": category},
             }
 
-        results = self._request("POST", f"databases/{db_id}/query", {"page_size": limit})
+        results = self._request("POST", f"databases/{db_id}/query", query_body)
         entries = []
         for page in results.get("results", []):
             props = page.get("properties", {})

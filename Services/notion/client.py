@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from notion_client import Client
-from notion_client.errors import APIResponseError
 
 from titan.config import settings
 

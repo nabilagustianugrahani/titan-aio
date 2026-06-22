@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from Services.notion.client import NotionClient
 from Services.notion.sync import NotionDashboard
-from titan.config import settings
 
 
 class NotionPageUpdater:
@@ -32,7 +31,7 @@ class NotionPageUpdater:
             categories[cat] = categories.get(cat, 0) + 1
 
         # Build summary text
-        cat_summary = " | ".join(f"{cat}: {count}" for cat, count in categories.items())
+        cat_summary = " | ".join(f"{cat}: {count}" for cat, count in categories.items()) if categories else ""
         summary = (
             f"📊 **TITAN AIO — Live Summary**\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -41,7 +40,8 @@ class NotionPageUpdater:
             f"📊 Active Campaigns: {len(campaigns)}\n"
             f"📋 Pending Tasks: {len(tasks)}\n"
             f"🧠 Knowledge: {len(knowledge)} entries\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            + (f"🏷️ Categories: {cat_summary}\n" if cat_summary else "")
+            + f"━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         )
 
         # Get existing blocks and find/update summary block

@@ -24,8 +24,6 @@ Usage:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import os
 import random
 import uuid
@@ -33,7 +31,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-import httpx
 
 
 @dataclass
@@ -64,7 +61,6 @@ class CharacterConsistency:
     def __init__(self):
         self.AVATARS_DIR.mkdir(parents=True, exist_ok=True)
         self.VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
-        self._scrapingbee_key = os.environ.get("SCRAPINGBEE_API_KEY", "")
 
     async def generate_avatar(
         self,
@@ -78,7 +74,7 @@ class CharacterConsistency:
     ) -> AvatarResult:
         """Generate avatar image with fixed seed for consistency.
 
-        Uses FLUX on Kaggle to generate the avatar.
+        Uses FLUX to generate the avatar.
         Seed ensures same face every time.
         """
         if seed == 0:
@@ -88,11 +84,6 @@ class CharacterConsistency:
 
         # Try Google Veo/Image API first
         result = await self._generate_with_google(prompt, profile_name, seed)
-        if result.success:
-            return result
-
-        # Fallback to Kaggle FLUX
-        result = await self._generate_with_kaggle(prompt, profile_name, seed)
         if result.success:
             return result
 
@@ -118,11 +109,6 @@ class CharacterConsistency:
 
         # Try Google Veo first (img2vid)
         result = await self._video_with_veo(prompt, avatar_path, duration_sec)
-        if result.success:
-            return result
-
-        # Fallback to Kaggle Wan 2.2 (img2vid)
-        result = await self._video_with_kaggle(prompt, avatar_path, duration_sec)
         if result.success:
             return result
 
@@ -178,76 +164,12 @@ class CharacterConsistency:
                     profile_name=profile_name, prompt=prompt, success=True,
                 )
 
-        except Exception as e:
-            pass
-
-        return AvatarResult(
-            image_path="", seed=seed, profile_name=profile_name,
-            prompt=prompt, success=False, error="Google Imagen failed",
-        )
-
-    async def _generate_with_kaggle(
-        self, prompt: str, profile_name: str, seed: int
-    ) -> AvatarResult:
-        """Generate avatar using Kaggle FLUX worker."""
-        try:
-            from Workers.kaggle_video import KaggleVideoWorker
-            worker = KaggleVideoWorker()
-
-            # Generate image using FLUX
-            gen_script = f'''
-import torch
-import os
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-torch.cuda.empty_cache()
-
-from diffusers import FluxPipeline
-
-pipe = FluxPipeline.from_pretrained(
-    "black-forest-labs/FLUX.1-schnell",
-    torch_dtype=torch.bfloat16,
-)
-pipe.to("cuda")
-pipe.enable_sequential_cpu_offload()
-pipe.enable_attention_slicing(1)
-pipe.vae.enable_slicing()
-pipe.vae.enable_tiling()
-
-generator = torch.Generator("cuda").manual_seed({seed})
-
-img = pipe(
-    "{prompt}",
-    guidance_scale=3.5,
-    num_inference_steps=4,
-    width=768,
-    height=1024,
-    generator=generator,
-).images[0]
-
-img.save("{self.AVATARS_DIR / f"{profile_name}.png"}")
-print("DONE")
-'''
-            # Run on Kaggle
-            output_path = self.AVATARS_DIR / f"{profile_name}.png"
-            proc = await asyncio.create_subprocess_exec(
-                "python3", "-c", gen_script,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            await asyncio.wait_for(proc.communicate(), timeout=300)
-
-            if output_path.exists():
-                return AvatarResult(
-                    image_path=str(output_path), seed=seed,
-                    profile_name=profile_name, prompt=prompt, success=True,
-                )
-
         except Exception:
             pass
 
         return AvatarResult(
             image_path="", seed=seed, profile_name=profile_name,
-            prompt=prompt, success=False, error="Kaggle FLUX failed",
+            prompt=prompt, success=False, error="Google Imagen failed",
         )
 
     async def _generate_placeholder(
@@ -331,48 +253,3 @@ print("DONE")
 
         return VideoResult(video_path="", duration_sec=0, model="veo", success=False)
 
-    async def _video_with_kaggle(
-        self, prompt: str, avatar_path: Path, duration_sec: int
-    ) -> VideoResult:
-        """Generate lightweight GIF/video from avatar (ultra-light, no moviepy)."""
-        if not avatar_path.exists():
-            return VideoResult(video_path="", duration_sec=0, model="gif", success=False)
-
-        try:
-            from PIL import Image
-
-            img = Image.open(avatar_path).resize((512, 768))  # Small for low RAM
-
-            # Create frames with Ken Burns effect (slow zoom)
-            frames = []
-            num_frames = max(3, duration_sec * 2)  # 2 fps for GIF
-            for i in range(num_frames):
-                scale = 1.0 + (i * 0.02)  # Gentle zoom
-                new_size = (int(512 * scale), int(768 * scale))
-                zoomed = img.resize(new_size, Image.LANCZOS)
-
-                # Crop to original size
-                left = (zoomed.width - 512) // 2
-                top = (zoomed.height - 768) // 2
-                frame = zoomed.crop((left, top, left + 512, top + 768))
-                frames.append(frame)
-
-            # Save as GIF (lightweight)
-            output_path = str(self.VIDEOS_DIR / f"char-{uuid.uuid4().hex[:8]}.gif")
-            frames[0].save(
-                output_path,
-                save_all=True,
-                append_images=frames[1:],
-                duration=500,  # 500ms per frame
-                loop=0,
-            )
-
-            return VideoResult(
-                video_path=output_path, duration_sec=duration_sec,
-                model="gif", success=True,
-            )
-
-        except Exception as e:
-            print(f"GIF generation error: {e}")
-
-        return VideoResult(video_path="", duration_sec=0, model="gif", success=False)

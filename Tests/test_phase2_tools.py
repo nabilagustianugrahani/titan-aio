@@ -32,7 +32,7 @@ class TestTrendTools:
 @pytest.mark.asyncio
 class TestMemoryTools:
     async def _test_store_and_find_hook(self):
-        from MCP.tools.memory_tools import memory_store_hook, memory_find_similar_hooks
+        from MCP.tools.memory_tools import memory_store_hook
         result = await memory_store_hook(hook_text="Test winning hook", hook_type="curiosity")
         assert result["stored"]
         # Clean up

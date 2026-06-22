@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Callable
+from typing import Callable
 
 
 class MessageBus:
@@ -22,9 +22,11 @@ class MessageBus:
         self._history.append(event)
         if len(self._history) > 1000:
             self._history = self._history[-500:]
-        for h in self._handlers.get(event_type, []):
-            try: h(event)
-            except Exception: pass
+        for handler in self._handlers.get(event_type, []):
+            try:
+                handler(event)
+            except Exception:
+                pass
         return eid
 
     def subscribe(self, event_type: str, handler: Callable):
@@ -42,5 +44,6 @@ _bus: MessageBus | None = None
 
 def get_bus() -> MessageBus:
     global _bus
-    if _bus is None: _bus = MessageBus()
+    if _bus is None:
+        _bus = MessageBus()
     return _bus

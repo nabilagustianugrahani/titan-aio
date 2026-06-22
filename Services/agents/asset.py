@@ -1,10 +1,8 @@
 """Asset Agent — collects and prepares product assets for campaigns."""
 from __future__ import annotations
 
-import os
-import uuid
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 

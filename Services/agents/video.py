@@ -1,4 +1,4 @@
-"""Video Agent — generates short-form videos via Kaggle worker dispatch."""
+"""Video Agent — generates short-form videos via worker dispatch."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ class VideoAgent(BaseAgent):
         shots = ShotPlanner.plan(script=script, hook=hook, duration=duration)
 
         # ── Build generation request ──
-        # In production this dispatches to Kaggle video-worker.
+        # In production this dispatches to video-worker.
         # For now, build the request payload that the worker would consume.
         generation_request = {
             "script": script,

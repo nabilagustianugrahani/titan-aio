@@ -47,7 +47,7 @@ class KaggleNotebookGenerator:
         # Install deps
         cells.append({
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "!pip install -q diffusers transformers accelerate torch\n",
                 "!pip install -q opencv-python sentencepiece protobuf\n",
@@ -59,7 +59,7 @@ class KaggleNotebookGenerator:
         # Check GPU + VRAM
         cells.append({
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "import torch, gc, os\n",
                 "print(f'GPU: {torch.cuda.get_device_name()}')\n",
@@ -82,7 +82,7 @@ class KaggleNotebookGenerator:
         # Save output
         cells.append({
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "import os\n",
                 "output_path = '/kaggle/working/titan_video.mp4'\n",
@@ -100,7 +100,7 @@ class KaggleNotebookGenerator:
             "cells": cells,
             "metadata": {
                 "kaggle": {
-                    "accelerator": "GPU",
+                    "accelerator": "GPU T4 x2",
                     "dataSources": [],
                     "isGpuEnabled": True,
                     "isInternetEnabled": True,
@@ -132,7 +132,7 @@ class KaggleNotebookGenerator:
         # Install deps
         cells.append({
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "!pip install -q torch torchvision opencv-python\n",
                 "!pip install -q librosa soundfile\n",
@@ -144,7 +144,7 @@ class KaggleNotebookGenerator:
         # Clone Wav2Lip
         cells.append({
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "!git clone https://github.com/Rudrabha/Wav2Lip /kaggle/working/Wav2Lip\n",
                 "!pip install -r /kaggle/working/Wav2Lip/requirements.txt\n",
@@ -159,7 +159,7 @@ class KaggleNotebookGenerator:
         # Run lip sync
         cells.append({
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "import subprocess\n",
                 "\n",
@@ -190,7 +190,7 @@ class KaggleNotebookGenerator:
             "cells": cells,
             "metadata": {
                 "kaggle": {
-                    "accelerator": "GPU",
+                    "accelerator": "GPU T4 x2",
                     "dataSources": [],
                     "isGpuEnabled": True,
                     "isInternetEnabled": True,
@@ -220,7 +220,7 @@ class KaggleNotebookGenerator:
 
         cells.append({
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "!pip install -q diffusers transformers accelerate torch\n",
                 "!pip install -q sentencepiece protobuf\n",
@@ -232,7 +232,7 @@ class KaggleNotebookGenerator:
         if model == "flux-schnell":
             cells.append({
                 "cell_type": "code",
-                "metadata": {"accelerator": "GPU"},
+                "metadata": {"accelerator": "GPU T4 x2"},
                 "source": [
                     "import torch\n",
                     "from diffusers import FluxPipeline\n",
@@ -265,7 +265,7 @@ class KaggleNotebookGenerator:
             "cells": cells,
             "metadata": {
                 "kaggle": {
-                    "accelerator": "GPU",
+                    "accelerator": "GPU T4 x2",
                     "dataSources": [],
                     "isGpuEnabled": True,
                     "isInternetEnabled": True,
@@ -282,7 +282,7 @@ class KaggleNotebookGenerator:
         """Generate Wan 2.2 notebook cell — anti-OOM for T4."""
         return {
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'\n",
                 "torch.cuda.empty_cache()\n",
@@ -347,7 +347,7 @@ class KaggleNotebookGenerator:
         """Generate Hunyuan notebook cell — anti-OOM for T4."""
         return {
             "cell_type": "code",
-            "metadata": {"accelerator": "GPU"},
+            "metadata": {"accelerator": "GPU T4 x2"},
             "source": [
                 "os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'\n",
                 "torch.cuda.empty_cache()\n",

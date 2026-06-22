@@ -3,7 +3,7 @@ TITAN AIO — Full Autonomous Pipeline
 
 Complete autonomous flow:
   Product URL → Analysis → Content → Video (Google Flow) →
-  Post-production (Kaggle) → Publish (6 platforms) → Track
+  Post-production → Publish (6 platforms) → Track
 
 All 18 agents integrated. Fully autonomous.
 
@@ -21,7 +21,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from Services.agents.base import AgentContext
 from Services.agents.message_bus import MessageBus
@@ -95,7 +95,7 @@ class AutonomousPipeline:
       7. CreativeAgent → thumbnails + storyboards
       8. VideoAgent → Google Flow video generation
       9. AvatarAgent → AI spokesperson
-      10. LipSyncEngine → Kaggle post-production
+      10. LipSyncEngine → post-production
       11. PublisherAgent → format for platforms
       12. Anti-ShadowbanAgent → scheduling
       13. AffiliateAgent → tracking links
@@ -142,7 +142,7 @@ class AutonomousPipeline:
         )
 
         print(f"\n{'='*60}")
-        print(f"🚀 TITAN AIO — AUTONOMOUS PIPELINE")
+        print("🚀 TITAN AIO — AUTONOMOUS PIPELINE")
         print(f"   ID: {state.pipeline_id}")
         print(f"   URL: {product_url}")
         print(f"   Platforms: {', '.join(platforms)}")
@@ -228,10 +228,10 @@ class AutonomousPipeline:
                 }, "Pipeline")
 
             # ═══════════════════════════════════════════════════════
-            # PHASE 5: POST-PRODUCTION (Kaggle)
+            # PHASE 5: POST-PRODUCTION
             # ═══════════════════════════════════════════════════════
             if include_lip_sync and state.video_variants:
-                print("\n lipsync PHASE 5: Post-Production (Kaggle)")
+                print("\n lipsync PHASE 5: Post-Production")
                 print("-" * 40)
 
                 lip_results = await self._post_production(state.video_variants)
@@ -269,7 +269,7 @@ class AutonomousPipeline:
             await self._save_state(state)
 
             print(f"\n{'='*60}")
-            print(f"✅ PIPELINE COMPLETE")
+            print("✅ PIPELINE COMPLETE")
             print(f"   ID: {state.pipeline_id}")
             print(f"   Videos: {len(state.video_variants)}")
             print(f"   Platforms: {', '.join(state.platform_posts.keys())}")
@@ -292,9 +292,16 @@ class AutonomousPipeline:
 
     # ── Agent Runners ────────────────────────────────────────────
 
+    @staticmethod
+    def _to_dict(result: object) -> dict:
+        """Convert Pydantic model or dict to plain dict."""
+        if isinstance(result, dict):
+            return result
+        return result.model_dump() if hasattr(result, "model_dump") else {"result": str(result)}
+
     async def _run_product_agent(self, url: str) -> dict:
         """Run ProductAgent to analyze the product."""
-        print(f"  🔍 Analyzing product...")
+        print("  🔍 Analyzing product...")
         try:
             from Services.agents.product import ProductAgent
             agent = ProductAgent()
@@ -308,14 +315,12 @@ class AutonomousPipeline:
 
     async def _run_review_agent(self, product_id: str) -> dict:
         """Run ReviewAgent to analyze reviews."""
-        print(f"  📝 Analyzing reviews...")
+        print("  📝 Analyzing reviews...")
         try:
             from Services.agents.review import ReviewAgent
             agent = ReviewAgent()
             result = await agent(product_id=product_id)
-            # result is AnalyzeReviewsOutput — convert to dict
-            if hasattr(result, 'model_dump'):
-                result = result.model_dump()
+            result = self._to_dict(result)
             print(f"  ✅ Reviews: {result.get('total_reviews_analyzed', 0)} analyzed")
             return result
         except Exception as e:
@@ -324,13 +329,12 @@ class AutonomousPipeline:
 
     async def _run_competitor_agent(self) -> dict:
         """Run CompetitorAgent to analyze competition."""
-        print(f"  🏆 Analyzing competitors...")
+        print("  🏆 Analyzing competitors...")
         try:
             from Services.agents.competitor import CompetitorAgent
             agent = CompetitorAgent()
             result = await agent(category="umum")
-            if hasattr(result, 'model_dump'):
-                result = result.model_dump()
+            result = self._to_dict(result)
             print(f"  ✅ Competitors: {result.get('competitors_analyzed', 0)} analyzed")
             return result
         except Exception as e:
@@ -339,13 +343,12 @@ class AutonomousPipeline:
 
     async def _run_trend_agent(self, category: str) -> dict:
         """Run TrendAgent for market trends."""
-        print(f"  📈 Analyzing trends...")
+        print("  📈 Analyzing trends...")
         try:
             from Services.agents.trend import TrendAgent
             agent = TrendAgent()
             result = await agent(category=category)
-            if hasattr(result, 'model_dump'):
-                result = result.model_dump()
+            result = self._to_dict(result)
             print(f"  ✅ Trends: {result.get('trend_score', 0)}")
             return result
         except Exception as e:
@@ -356,7 +359,7 @@ class AutonomousPipeline:
         self, product: dict, reviews: dict, competitors: dict
     ) -> dict:
         """Run OfferAgent for pricing strategy."""
-        print(f"  💰 Developing offer strategy...")
+        print("  💰 Developing offer strategy...")
         try:
             from Services.agents.offer import OfferAgent
             agent = OfferAgent()
@@ -383,18 +386,17 @@ class AutonomousPipeline:
                 reviews=reviews_model,
                 competitors=competitors_model,
             )
-            if hasattr(result, 'model_dump'):
-                result = result.model_dump()
-            angle = result.get("primary_angle", "")[:50] if isinstance(result, dict) else str(result)[:50]
+            result = self._to_dict(result)
+            angle = result.get("primary_angle", "")[:50]
             print(f"  ✅ Offer: {angle}")
-            return result if isinstance(result, dict) else {"primary_angle": str(result)}
+            return result
         except Exception as e:
             print(f"  ⚠️  OfferAgent error: {e}")
             return {"primary_angle": "Best Value", "value_proposition": "", "recommended_cta": "Beli sekarang!", "error": str(e)}
 
     async def _run_content_agent(self, product: dict, offer: dict) -> dict:
         """Run ContentAgent for hooks + scripts."""
-        print(f"  ✍️  Generating content...")
+        print("  ✍️  Generating content...")
         try:
             from Services.agents.content import ContentAgent
             agent = ContentAgent()
@@ -404,36 +406,32 @@ class AutonomousPipeline:
                 category=product.get("category", "umum"),
                 title=product.get("title", "Product"),
             )
-            # result is a dict with nested Pydantic models
-            hooks_obj = result.get("hooks", None)
-            scripts_obj = result.get("scripts", None)
+            # result is a dict with nested Pydantic models — flatten hooks/scripts
+            result = self._to_dict(result)
+            result["hooks"] = [
+                self._to_dict(h) for h in (
+                    result["hooks"].get("hooks", [])
+                    if isinstance(result.get("hooks"), dict)
+                    else getattr(result.get("hooks"), "hooks", [])
+                )
+            ]
+            result["scripts"] = [
+                self._to_dict(s) for s in (
+                    result["scripts"].get("scripts", [])
+                    if isinstance(result.get("scripts"), dict)
+                    else getattr(result.get("scripts"), "scripts", [])
+                )
+            ]
 
-            # Extract lists from Pydantic models
-            hooks_list = []
-            if hasattr(hooks_obj, 'hooks'):
-                hooks_list = [h.model_dump() if hasattr(h, 'model_dump') else h for h in hooks_obj.hooks]
-            elif isinstance(hooks_obj, dict):
-                hooks_list = hooks_obj.get("hooks", [])
-
-            scripts_list = []
-            if hasattr(scripts_obj, 'scripts'):
-                scripts_list = [s.model_dump() if hasattr(s, 'model_dump') else s for s in scripts_obj.scripts]
-            elif isinstance(scripts_obj, dict):
-                scripts_list = scripts_obj.get("scripts", [])
-
-            # Convert result to serializable dict
-            result["hooks"] = hooks_list
-            result["scripts"] = scripts_list
-
-            print(f"  ✅ Content: {len(hooks_list)} hooks, {len(scripts_list)} scripts")
+            print(f"  ✅ Content: {len(result['hooks'])} hooks, {len(result['scripts'])} scripts")
             return result
         except Exception as e:
             print(f"  ⚠️  ContentAgent error: {e}")
             return {"hooks": [], "scripts": [], "error": str(e)}
 
-    async def _run_ugc_engine(self, product: dict, offer: dict, profile_name: str = "") -> 'UGCResult':
+    async def _run_ugc_engine(self, product: dict, offer: dict, profile_name: str = "") -> 'UGCResult':  # noqa: F821
         """Run AI-powered UGC engine for consistent content."""
-        print(f"  ✍️  Generating UGC content...")
+        print("  ✍️  Generating UGC content...")
         try:
             from Services.ugc.engine import UGCEngine
             engine = UGCEngine()
@@ -456,7 +454,7 @@ class AutonomousPipeline:
 
     async def _run_content_agent_fallback(self, product: dict, offer: dict):
         """Fallback to old ContentAgent if UGC engine fails."""
-        from Services.ugc.engine import UGCResult, UGCHook, UGCScript, UGCCaption
+        from Services.ugc.engine import UGCResult, UGCHook, UGCScript
         content = await self._run_content_agent(product, offer)
         hooks = [UGCHook(text=h.get("hook", ""), style=h.get("type", "curiosity"), platform="tiktok", predicted_ctr="medium") for h in content.get("hooks", [])]
         scripts = [UGCScript(hook=s.get("full_script", "")[:50], problem="", solution="", demo="", social_proof="", cta="", full_script=s.get("full_script", ""), duration_seconds=30, style="talking_head") for s in content.get("scripts", [])]
@@ -467,7 +465,7 @@ class AutonomousPipeline:
     async def _generate_videos(
         self, scripts: list[dict], product: dict, num_variants: int
     ) -> list[dict]:
-        """Generate videos using Google Flow (primary) or Kaggle (fallback)."""
+        """Generate videos using Google Flow."""
         videos = []
         title = product.get("title", "Product") if product else "Product"
 
@@ -505,8 +503,7 @@ class AutonomousPipeline:
         return videos
 
     async def _generate_single_video(self, prompt: str, style: str = "cinematic") -> dict:
-        """Generate a single video — try Google Flow, fallback to Kaggle."""
-        # 1. Try Google Flow (high quality, free)
+        """Generate a single video using Google Flow."""
         try:
             from Services.video.google_flow import GoogleFlowGenerator
             gen = GoogleFlowGenerator()
@@ -525,49 +522,23 @@ class AutonomousPipeline:
         except Exception as e:
             print(f"    ⚠️  Google Flow failed: {e}")
 
-        # 2. Fallback to Kaggle Wan 2.2
-        try:
-            from Workers.kaggle_video import KaggleVideoWorker
-            worker = KaggleVideoWorker()
-            result = await worker.generate(
-                script=prompt,
-                model="wan-2-2",
-                resolution=(512, 512),
-                num_frames=81,
-            )
-            if result.success:
-                return {
-                    "video_path": result.video_path,
-                    "url": "",
-                    "source": "kaggle_wan",
-                }
-        except Exception as e:
-            print(f"    ⚠️  Kaggle failed: {e}")
-
         return {"video_path": "", "url": "", "source": "none"}
 
     # ── Post-Production ──────────────────────────────────────────
 
     async def _post_production(self, videos: list[dict]) -> list[dict]:
-        """Run lip sync on videos via Kaggle Wav2Lip."""
+        """Run lip sync on videos."""
         results = []
         for video in videos:
             if not video.get("video_path"):
                 continue
 
             print(f"  🎭 Lip sync: {video.get('label', 'unknown')}...")
-            try:
-                from Services.video.lip_sync import LipSyncEngine
-                engine = LipSyncEngine()
-                # Note: face_image and audio_path would come from avatar agent
-                # For now, skip if not available
-                results.append({
-                    "variant_id": video.get("variant_id"),
-                    "original": video.get("video_path"),
-                    "lip_sync": "pending",
-                })
-            except Exception as e:
-                print(f"    ⚠️  Lip sync error: {e}")
+            results.append({
+                "variant_id": video.get("variant_id"),
+                "original": video.get("video_path"),
+                "lip_sync": "pending",
+            })
 
         return results
 
@@ -617,7 +588,8 @@ class AutonomousPipeline:
         try:
             # Save to Notion — build minimal AffiliatePackageOutput-like object
             from Services.notion.sync import NotionDashboard
-            from dataclasses import dataclass
+
+            prod = state.product or {}
 
             @dataclass
             class _MiniProduct:
@@ -631,7 +603,6 @@ class AutonomousPipeline:
                 campaign_id: str = ""
                 product: _MiniProduct = None
 
-            prod = state.product or {}
             package = _MiniPackage(
                 campaign_id=state.pipeline_id,
                 product=_MiniProduct(

@@ -5,9 +5,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import subprocess
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from Database.models import Product, Metric
 from Database.repository import Repository

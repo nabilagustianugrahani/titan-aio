@@ -166,7 +166,7 @@ class TestCreateAffiliatePackage:
 
 
 @pytest.mark.asyncio
-class _TestVectorStore:
+class TestVectorStore:
     """Test vector store operations."""
 
     async def test_add_and_search(self):

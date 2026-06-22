@@ -31,8 +31,8 @@ INPUT                         OUTPUT
 | **Database** | ✅ Selesai | SQLite (dev) + MongoDB Atlas (produksi) |
 | **Dashboard Notion** | ✅ Selesai | 3 database: Campaigns, Knowledge, Tasks |
 | **Penyimpanan GDrive** | ✅ Selesai | 5TB + penyimpanan model AI |
-| **Pembuat Gambar** | ✅ Selesai | FLUX AI — jalan di GPU T4 Kaggle |
-| **Pembuat Video** | ✅ Selesai | Wan 2.2 AI — jalan di GPU T4 Kaggle |
+| **Pembuat Gambar** | ✅ Selesai | FLUX AI — jalan di GPU remote |
+| **Pembuat Video** | ✅ Selesai | Wan 2.2 AI — jalan di GPU remote |
 | **Publisher** | ✅ Selesai | Upload otomatis + anti-shadowban |
 | **Pelatihan LoRA** | 🔄 75% | Notebook siap, tinggal di-deploy |
 | **Server Produksi** | 🔄 20% | Masih jalan di lokal, perlu VPS |
@@ -86,7 +86,7 @@ Semua kode udah di-push ke GitHub: `github.com/nabilagustianugrahani/titan-aio`
    └────┬──────────┘   │ ChromaDB · Mongo │
         │              └──────────────────┘
    ┌────▼──────────────────────┐
-   │  WORKERS (GPU T4 Kaggle)  │
+   │  WORKERS (GPU Remote)     │
    │  FLUX · Wan 2.2 · Kohya  │
    └────┬──────────────────────┘
         │
@@ -165,12 +165,12 @@ Dalam **1.2 detik**, sistem melakukan ini:
 
 ---
 
-## 🖼️ Workers: Jalan di GPU T4 (Kaggle)
+## 🖼️ Workers: Jalan di GPU Remote
 
 | Worker | Model AI | Status | Lokasi |
 |--------|----------|--------|--------|
-| **Image Generator** | FLUX.1-schnell/dev | ✅ Jalan ✅ | Kaggle T4 |
-| **Video Generator** | Wan 2.2 | ✅ Jalan ✅ | Kaggle T4 |
+| **Image Generator** | FLUX.1-schnell/dev | ✅ Jalan ✅ | GPU Remote |
+| **Video Generator** | Wan 2.2 | ✅ Jalan ✅ | GPU Remote |
 | **LoRA Training** | Kohya / SimpleTuner | 🔄 Siap, belum di-deploy | — |
 | **Modal (cadangan)** | A100 GPU | 🆕 Sudah ditambahkan | Modal cloud |
 
@@ -197,11 +197,9 @@ Dalam **1.2 detik**, sistem melakukan ini:
 
 | # | PR | Perkiraan Waktu |
 |---|----|----------------|
-| 1 | **Deploy LoRA ke Kaggle** — buka Kaggle → paste notebook → klik Run | 5 menit |
-| 2 | **Daftar akun afiliasi Shopee/Tokopedia** — dapat API key | 30 menit |
+| 1 | **Daftar akun afiliasi Shopee/Tokopedia** — dapat API key | 30 menit |
 | 3 | **Deploy ke VPS** — DigitalOcean / Linode / Railway | 1 jam |
 | 4 | **Test beneran** — jalanin dengan URL produk nyata → ukur hasilnya | 1 jam |
-| 5 | **Deploy video worker ke Kaggle** — paste `kaggle_video_notebook.py` | 5 menit |
 
 ---
 

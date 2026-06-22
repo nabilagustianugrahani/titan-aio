@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from sqlalchemy import MetaData
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
-from titan.config import PROJECT_ROOT, settings
+from titan.config import settings
 
 # Use extend_existing to allow model re-imports during testing
 metadata = MetaData()
@@ -19,11 +18,12 @@ class Base(DeclarativeBase):
     metadata = metadata
 
 
-# Ensure the database directory exists for file-based SQLite databases.
-# This must happen before engine creation (which would fail if the
-# directory does not exist).
+# Detect PostgreSQL vs SQLite
 _db_url: str = settings.DATABASE_URL
-if _db_url.startswith("sqlite") and ":memory:" not in _db_url:
+_is_postgres = _db_url.startswith("postgresql")
+
+# Ensure the database directory exists for file-based SQLite databases.
+if not _is_postgres and _db_url.startswith("sqlite") and ":memory:" not in _db_url:
     # Extract path after "://". SQLite://path, sqlite+aiosqlite://path
     _auth_part = _db_url.split("://", 1)[1] if "://" in _db_url else _db_url
     # If auth part starts with /, it's absolute. Strip leading / for path
@@ -38,8 +38,9 @@ engine = create_async_engine(
     settings.DATABASE_URL,
     echo=False,
     echo_pool=False,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=5 if _is_postgres else 10,
+    max_overflow=5 if _is_postgres else 20,
+    connect_args={"ssl": "require"} if _is_postgres else {},
 )
 
 async_session_factory = async_sessionmaker(

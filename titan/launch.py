@@ -24,7 +24,7 @@ from MCP.tools.create_affiliate_package import create_affiliate_package
 from MCP.schemas import CreateAffiliatePackageInput
 from Services.notion.sync import NotionDashboard
 from Services.gdrive.client import GoogleDriveClient
-from Services.video.variant_generator import VariantGenerator, VariantBatch
+from Services.video.variant_generator import VariantGenerator
 from Services.video.lip_sync import LipSyncEngine
 
 
@@ -51,14 +51,14 @@ class AutonomousLauncher:
         if platforms is None:
             platforms = ["tiktok"]
 
-        print(f"\n🚀 TITAN AIO — AUTONOMOUS LAUNCH")
+        print("\n🚀 TITAN AIO — AUTONOMOUS LAUNCH")
         print(f"   Target: {url}")
         print(f"   Mode: {mode}")
         print(f"   Platforms: {', '.join(platforms)}")
         print(f"   {'═' * 50}")
 
         # 1. Generate full package
-        print(f"\n1️⃣  Generating affiliate package...")
+        print("\n1️⃣  Generating affiliate package...")
         package = await create_affiliate_package(
             CreateAffiliatePackageInput(url=url, include_video=True, include_avatar=True)
         )
@@ -113,15 +113,15 @@ class AutonomousLauncher:
 
         # 3. Lip sync mode
         if mode == "lip-sync" and face_image:
-            print(f"\n3️⃣  Generating lip sync video...")
+            print("\n3️⃣  Generating lip sync video...")
             lip_engine = LipSyncEngine()
             if lip_engine.is_available():
                 # Generate audio from script first
                 audio_path = f"/tmp/titan-audio-{package.campaign_id}.wav"
-                print(f"   🎤 Generating TTS audio...")
+                print("   🎤 Generating TTS audio...")
                 # TTS generation would go here (integration with TTS service)
 
-                print(f"   👄 Running lip sync...")
+                print("   👄 Running lip sync...")
                 sync_result = await lip_engine.sync(
                     audio_path=audio_path,
                     face_image=face_image,
@@ -132,21 +132,21 @@ class AutonomousLauncher:
                 else:
                     print(f"   ⚠️  Lip sync failed: {sync_result.error}")
             else:
-                print(f"   ⚠️  No lip sync engine available")
-                print(f"   Install: git clone https://github.com/Rudrabha/Wav2Lip /opt/lip-sync-models/Wav2Lip")
+                print("   ⚠️  No lip sync engine available")
+                print("   Install: git clone https://github.com/Rudrabha/Wav2Lip /opt/lip-sync-models/Wav2Lip")
 
         # 4. Push to Notion dashboard
-        print(f"\n4️⃣  Syncing to Notion dashboard...")
+        print("\n4️⃣  Syncing to Notion dashboard...")
         db = NotionDashboard()
         campaign = db.push_campaign(package)
         print(f"   ✅ Campaign saved → {campaign.get('url', 'Notion')}")
 
         for h in package.hooks.hooks[:3]:
             db.push_knowledge("Hooks", h.hook, 0.7 if h.predicted_ctr == "high" else 0.5)
-        print(f"   ✅ Top hooks saved to Knowledge Base")
+        print("   ✅ Top hooks saved to Knowledge Base")
 
         # 5. Save to GDrive
-        print(f"\n5️⃣  Backing up to GDrive...")
+        print("\n5️⃣  Backing up to GDrive...")
         report = {
             "campaign_id": package.campaign_id,
             "product": package.product.title,
@@ -168,12 +168,12 @@ class AutonomousLauncher:
         try:
             gdrive = GoogleDriveClient.get_instance()
             gdrive.upload_file(str(report_path), mime_type="application/json")
-            print(f"   ✅ Report uploaded to GDrive")
+            print("   ✅ Report uploaded to GDrive")
         except Exception as e:
             print(f"   ⚠️  GDrive upload skipped: {e}")
 
         print(f"\n{'═' * 50}")
-        print(f"✅ LAUNCH COMPLETE")
+        print("✅ LAUNCH COMPLETE")
         print(f"   Campaign ID: {package.campaign_id}")
         print(f"   Mode: {mode}")
         if mode == "batch":

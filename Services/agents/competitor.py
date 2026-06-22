@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from MCP.schemas import AnalyzeCompetitorsOutput, CompetitorHook
@@ -29,7 +28,6 @@ _ANGLE_KEYWORDS = {
     "gratis": "gratis ongkir",
     "ongkir": "gratis ongkir",
     "cashback": "cashback",
-    "gratis": "bonus/hadiah",
     "bonus": "bonus/hadiah",
     "hadiah": "bonus/hadiah",
     "kualitas": "kualitas premium",

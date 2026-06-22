@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from typing import Optional
 
 
 class BatchVariantInput(BaseModel):
@@ -77,11 +76,11 @@ async def generate_batch_variants(input_data: BatchVariantInput) -> BatchVariant
 
 async def analyze_batch_performance(input_data: AnalyzeBatchInput) -> AnalyzeBatchOutput:
     """Analyze A/B test results and recommend winner."""
-    from Services.video.variant_generator import VariantOptimizer, VariantBatch
+    from Services.video.variant_generator import VariantOptimizer
 
     # In production, load batch from DB
     # For now, return placeholder analysis
-    optimizer = VariantOptimizer()
+    VariantOptimizer()
 
     return AnalyzeBatchOutput(
         batch_id=input_data.batch_id,
