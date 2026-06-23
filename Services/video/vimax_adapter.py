@@ -87,22 +87,38 @@ class ViMaxEngine:
             return {"error": "ViMax timed out", "model": "vimax"}
 
     async def _fallback(self, script: str, hook: str, duration: int) -> dict:
-        """Fallback to single-shot generation via MCP tool."""
+        """Fallback to DashScope Wan 2.7 I2V (cloud, no GPU needed)."""
         try:
-            from MCP.tools.video_avatar_tools import generate_product_video
-            result = await generate_product_video(
-                product_id=f"vimax-{uuid.uuid4().hex[:12]}",
-                script_text=script or hook,
-                model="wan-2-2",
+            from Services.generation.dashscope_video import generate_video
+            # Generate a placeholder product image for I2V
+            image_url = await self._generate_placeholder_image(hook or script[:100])
+            video_url = await generate_video(
+                image_url=image_url,
+                prompt=script or hook,
+                duration=min(duration, 15),
             )
-            return {
-                "path": result.get("url", ""),
-                "duration": duration,
-                "model": "wan-2-2",
-                "multi_shot": False,
-            }
+            if video_url:
+                return {
+                    "path": video_url,
+                    "duration": duration,
+                    "model": "wan2.7-i2v",
+                    "multi_shot": False,
+                }
+            return {"error": "DashScope returned no video URL", "model": "wan2.7-i2v"}
         except Exception as e:
-            return {"error": str(e), "model": "wan-2-2"}
+            return {"error": str(e), "model": "wan2.7-i2v"}
+
+    async def _generate_placeholder_image(self, prompt: str) -> str:
+        """Generate a placeholder product image for I2V input."""
+        try:
+            from Services.generation.dashscope_image import generate_image
+            url = await generate_image(prompt=prompt)
+            if url:
+                return url
+        except Exception:
+            pass
+        # Fallback: use a solid color placeholder hosted image
+        return "https://placehold.co/1280x720/1a1a2e/ffffff?text=Product+Review"
 
     @staticmethod
     def _parse_shots(script: str) -> list[dict]:

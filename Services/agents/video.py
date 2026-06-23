@@ -12,7 +12,8 @@ logger = logging.getLogger("titan.video")
 
 # Model choices
 _MODELS = {
-    "wan-2-2": {"name": "Wan 2.2 T2V", "max_duration": 30, "quality": "standard"},
+    "wan2.7-i2v": {"name": "Wan 2.7 I2V (DashScope)", "max_duration": 15, "quality": "high"},
+    "wan-2-2": {"name": "Wan 2.2 T2V (Modal GPU)", "max_duration": 30, "quality": "standard"},
     "hunyuan": {"name": "Hunyuan Video", "max_duration": 15, "quality": "high"},
 }
 
@@ -24,12 +25,12 @@ class VideoAgent(BaseAgent):
         self,
         ctx: AgentContext,
         script: str = "",
-        model: str = "wan-2-2",
-        duration_seconds: int = 30,
+        model: str = "wan2.7-i2v",
+        duration_seconds: int = 15,
         hook: str = "",
         **kwargs: Any,
     ) -> dict:
-        model_info = _MODELS.get(model, _MODELS["wan-2-2"])
+        model_info = _MODELS.get(model, _MODELS["wan2.7-i2v"])
 
         # Clamp duration to model limits
         duration = min(duration_seconds, model_info["max_duration"])
