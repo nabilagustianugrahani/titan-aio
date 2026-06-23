@@ -21,12 +21,13 @@ class TestTrendTools:
     async def test_evaluate_finance(self):
         from MCP.tools.trend_tools import evaluate_campaign_finance
         result = await evaluate_campaign_finance("c1", revenue=1000000, ad_spend=200000)
-        assert result["financials"]["roi"] == 4.0
+        assert result["recorded"] is True
+        assert result["roi"] == 4.0
 
     async def test_growth_decision(self):
         from MCP.tools.trend_tools import decide_growth_action
         r1 = await decide_growth_action(roi=3.0)
-        assert r1["actions"][0]["action"] == "scale"
+        assert r1["action"] == "scale"
 
 
 @pytest.mark.asyncio

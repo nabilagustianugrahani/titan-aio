@@ -57,12 +57,13 @@ class TestMarketIntelligence:
         result = await ceo.evaluate_finance(
             "campaign-1", revenue=1000000, ad_spend=200000
         )
-        assert result["financials"]["roi"] == 4.0
+        assert result["recorded"] is True
+        assert result["roi"] == 4.0
 
     async def test_growth_decision(self):
         from Services.orchestrator import CEOAgent
         ceo = CEOAgent()
         result = await ceo.growth_decision(roi=3.0)
-        assert result["actions"][0]["action"] == "scale"
+        assert result["action"] == "scale"
         result_low = await ceo.growth_decision(roi=0.3)
-        assert result_low["actions"][0]["action"] == "kill"
+        assert result_low["action"] == "kill"
