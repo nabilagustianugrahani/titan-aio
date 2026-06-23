@@ -30,13 +30,14 @@ Generate:
   "duration_seconds": 0,
   "format": "9:16 | 16:9 | 1:1",
   "script_title": "string",
-  "model_used": "wan_2_2 | hunyuan_video",
+  "model_used": "wan2.7-i2v | hunyuan_video",
   "processing_time_seconds": 0
 }
 ```
 
 ## Generation Models
-- **Wan 2.2**: General short-form, good motion consistency
+- **Wan 2.7 I2V (DashScope)**: Cloud API, no GPU needed, high quality
+- **Wan 2.2 T2V (Modal GPU)**: Fallback, runs on A100 GPU
 - **Hunyuan Video**: Higher quality, slower generation
 
 ## Dependencies

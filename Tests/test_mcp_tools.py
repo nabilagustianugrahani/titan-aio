@@ -127,7 +127,7 @@ class TestGenerateVideo:
             GenerateVideoInput(script="Test script")
         )
         assert result.video_url
-        assert result.model_used == "wan-2-2"
+        assert result.model_used == "wan2.7-i2v"
 
 
 @pytest.mark.asyncio

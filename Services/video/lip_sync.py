@@ -4,7 +4,7 @@ Lip Sync Engine — voice-driven face animation.
 Supports:
 - Wav2Lip (primary): high-quality lip sync from audio + face image
 - SadTalker (fallback): head movement + lip sync from single image
-- Wan 2.2 native (no face): pure text-to-video without lip sync
+- Wan 2.7 I2V (no face): pure image-to-video without lip sync
 
 Usage:
     from Services.video.lip_sync import LipSyncEngine
@@ -79,7 +79,7 @@ class LipSyncEngine:
                 duration_sec=0,
                 resolution=resolution,
                 success=False,
-                error="No lip sync engine available. Use Wan 2.2 for text-to-video.",
+                error="No lip sync engine available. Use Wan 2.7 I2V for video generation.",
             )
 
     def _detect_engine(self) -> str:

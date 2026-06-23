@@ -145,20 +145,22 @@ GPU work runs on **Modal** workers (never on VPS):
 
 | Model | Task | GPU | Timeout |
 |-------|------|-----|---------|
+| Wan 2.7 I2V (DashScope) | Video generation (cloud) | — | 15min |
 | FLUX.1-schnell | Image generation | A100 | 900s |
 | SD 3.5 Medium | Image generation | T4 | 600s |
-| Wan 2.2 T2V-A14B | Video generation | A100 | 900s |
+| Wan 2.2 T2V-A14B | Video generation (GPU fallback) | A100 | 900s |
 | Google Veo 2 | Video generation (API) | — | — |
 
 **Dispatch pattern:**
-- `Workers/modal_a100.py` → `@app.function(gpu="A100")` for FLUX & Wan 2.2
+- **Primary**: DashScope Wan 2.7 I2V (cloud, no GPU needed) → `Services/generation/dashscope_video.py`
+- `Workers/modal_a100.py` → `@app.function(gpu="A100")` for FLUX & Wan 2.2 fallback
 - `Workers/modal_image.py` → `@app.function(gpu="T4")` for SD 3.5
 - `Services/video/google_flow.py` → Google Veo 2 API client (safe for VPS, no memory issues)
 - `Services/video/vimax_adapter.py` → ViMax multi-shot adapter
 - `Services/video/lip_sync.py` → Wav2Lip (primary), SadTalker (fallback), Wan native (no face)
 - `Services/video/variant_generator.py` → A/B batch variant generation
 
-**UGC flow:** `Services/ugc/engine.py` generates AI video prompts (Gemini 2.5 Flash) → Worker dispatches to GPU → Download results → Assembly
+**UGC flow:** `Services/ugc/engine.py` generates AI video prompts (Gemini 2.5 Flash) → DashScope Wan 2.7 I2V (primary) or Modal GPU (fallback) → Download results → Assembly
 
 **Model cache:** `Services/gdrive/model_store.py` caches FLUX/Wan models in GDrive (5-30GB) to avoid redownloading.
 

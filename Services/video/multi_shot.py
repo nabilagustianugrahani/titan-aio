@@ -2,7 +2,7 @@
 Multi-Shot Video Engine — ViMax-inspired, zero external deps.
 
 ViMax concept: split script → plan shots → generate per-shot → assemble.
-We already have all the pieces (LLM, FLUX, Wan 2.2, FFmpeg).
+We already have all the pieces (LLM, FLUX, Wan 2.7 I2V, FFmpeg).
 This just orchestrates them in a multi-shot pipeline.
 
 No API key needed beyond what we already have.

@@ -140,7 +140,7 @@ services/
 workers/
 ├── router.py               # Redis-based job dispatcher
 ├── image_worker.py         # FLUX Schnell / FLUX Dev
-├── video_worker.py         # Wan 2.2 / Hunyuan Video
+├── video_worker.py         # Wan 2.7 I2V (DashScope) / Wan 2.2 (Modal GPU)
 └── lora_worker.py          # Kohya / SimpleTuner
 ```
 
@@ -180,7 +180,7 @@ database/
 | Queue | Redis | Simple, fast, widely supported |
 | Storage | S3-compatible | Scalable, cheap, standard API |
 | Image Gen | FLUX Schnell/Dev | Fast, open, quality output |
-| Video Gen | Wan 2.2 / Hunyuan | Open models, good short-form quality |
+| Video Gen | Wan 2.7 I2V (DashScope) / Hunyuan | Cloud API primary, GPU fallback |
 | LoRA Training | Kohya / SimpleTuner | Mature tooling for product fine-tuning |
 | GPU Workers | Remote workers | Free tier for generation, usage-based |
 

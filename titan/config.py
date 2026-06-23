@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 
     # Generation Models
     IMAGE_MODEL: str = "black-forest-labs/FLUX.1-schnell"
-    VIDEO_MODEL: str = "Wan-AI/Wan2.2-T2V-14B"
+    VIDEO_MODEL: str = "wan2.7-i2v"  # DashScope Wan 2.7 I2V (cloud, no GPU)
 
     # LoRA Policy
     LORA_MIN_USAGE: int = 20

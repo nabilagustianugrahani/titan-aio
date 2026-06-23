@@ -4,10 +4,10 @@ from __future__ import annotations
 from Services.orchestrator import CEOAgent
 
 
-async def generate_product_video(product_id: str, script_text: str, model: str = "wan-2-2") -> dict:
+async def generate_product_video(product_id: str, script_text: str, model: str = "wan2.7-i2v") -> dict:
     """Generate a product video.
 
-    Models: wan-2-2, hunyuan, wan-lip (with lip sync)
+    Models: wan2.7-i2v (DashScope cloud), wan-2-2 (Modal GPU), hunyuan, wan-lip
     """
     try:
         ceo = CEOAgent()

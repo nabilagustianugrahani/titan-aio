@@ -293,9 +293,9 @@ class FailurePatternLearner:
 
 # Fallback models for media generation steps
 FALLBACK_MODELS: dict[str, list[str]] = {
-    "generate_video": ["wan-2-2-fallback", "wan-2-2-t2v"],
+    "generate_video": ["wan2.7-i2v", "wan-2-2-t2v"],
     "generate_image": ["sd-3.5-medium", "flux-schnell-fallback"],
-    "generate_avatar": ["sd-3.5-medium", "wan-2-2"],
+    "generate_avatar": ["sd-3.5-medium", "wan2.7-i2v"],
     "lip_sync": ["sadtalker", "wan_native"],
 }
 

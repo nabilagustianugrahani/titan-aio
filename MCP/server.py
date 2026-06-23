@@ -295,9 +295,9 @@ async def generate_product_image(
 
 @mcp.tool()
 async def generate_video_from_script(
-    script: str, model: str = "wan-2-2"
+    script: str, model: str = "wan2.7-i2v"
 ) -> dict:
-    """Generate a video from script using Wan 2.2 or Hunyuan."""
+    """Generate a video from script using Wan 2.7 I2V or Hunyuan."""
     input_data = GenerateVideoInput(script=script, model=model)
     result = await generate_video(input_data)
     return result.model_dump()
@@ -479,8 +479,8 @@ async def prepare_social_content(caption: str = "") -> list[dict]:
 
 
 @mcp.tool()
-async def generate_product_video_tool(product_id: str, script_text: str, model: str = "wan-2-2") -> dict:
-    """Generate a short-form product video using AI models (Wan 2.2 / Hunyuan)."""
+async def generate_product_video_tool(product_id: str, script_text: str, model: str = "wan2.7-i2v") -> dict:
+    """Generate a short-form product video using AI models (Wan 2.7 I2V / Hunyuan)."""
     return await generate_product_video(product_id=product_id, script_text=script_text, model=model)
 
 

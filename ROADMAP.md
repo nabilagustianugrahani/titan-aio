@@ -43,7 +43,7 @@ Output: Product Analysis + Review Summary + 10 Hooks + 10 Scripts + Thumbnail + 
 **Goal:** Full multimedia generation pipeline.
 
 ### Deliverables
-- [ ] Video Agent — short-form video generation (Wan 2.2 / Hunyuan)
+- [ ] Video Agent — short-form video generation (Wan 2.7 I2V / Hunyuan)
 - [ ] Avatar Agent — AI spokesperson with consistent character
 - [ ] Product LoRA training pipeline (Kohya/SimpleTuner)
 - [ ] LoRA policy enforcement (train only if usage_count > 20)

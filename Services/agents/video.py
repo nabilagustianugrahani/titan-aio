@@ -57,8 +57,14 @@ class VideoAgent(BaseAgent):
         }
 
         # ── Estimate processing time ──
+        # Wan 2.7 I2V via DashScope: ~5s per frame (cloud API)
         # Wan 2.2 on T4: ~2s/frame → duration * 8 frames = est time
-        est_seconds = duration * 8 * 2 if model == "wan-2-2" else duration * 8 * 5
+        if model == "wan2.7-i2v":
+            est_seconds = duration * 4  # cloud API ~4s per second of video
+        elif model == "wan-2-2":
+            est_seconds = duration * 8 * 2
+        else:
+            est_seconds = duration * 8 * 5
 
         return {
             "video_id": "",  # Populated by worker after generation

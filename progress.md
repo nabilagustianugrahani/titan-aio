@@ -32,7 +32,7 @@ INPUT                         OUTPUT
 | **Dashboard Notion** | ✅ Selesai | 3 database: Campaigns, Knowledge, Tasks |
 | **Penyimpanan GDrive** | ✅ Selesai | 5TB + penyimpanan model AI |
 | **Pembuat Gambar** | ✅ Selesai | FLUX AI — jalan di GPU remote |
-| **Pembuat Video** | ✅ Selesai | Wan 2.2 AI — jalan di GPU remote |
+| **Pembuat Video** | ✅ Selesai | Wan 2.7 I2V (DashScope cloud) + Wan 2.2 GPU fallback |
 | **Publisher** | ✅ Selesai | Upload otomatis + anti-shadowban |
 | **Pelatihan LoRA** | 🔄 75% | Notebook siap, tinggal di-deploy |
 | **Server Produksi** | 🔄 20% | Masih jalan di lokal, perlu VPS |
@@ -87,7 +87,7 @@ Semua kode udah di-push ke GitHub: `github.com/nabilagustianugrahani/titan-aio`
         │              └──────────────────┘
    ┌────▼──────────────────────┐
    │  WORKERS (GPU Remote)     │
-   │  FLUX · Wan 2.2 · Kohya  │
+   │  FLUX · Wan 2.7 · Kohya  │
    └────┬──────────────────────┘
         │
    ┌────▼──────────────────────┐
@@ -158,7 +158,7 @@ Dalam **1.2 detik**, sistem melakukan ini:
  5. 10 Naskah UGC      → ⏱️ Siap direkam
  6. Konsep Thumbnail   → ⏱️ Yang bikin orang klik
  7. Gambar Produk      → ⏱️ FLUX AI generate
- 8. Video + Avatar     → ⏱️ Wan 2.2 generate
+ 8. Video + Avatar     → ⏱️ Wan 2.7 I2V generate
  9. Sync ke Notion     → ⏱️ Dashboard update
 10. Upload ke GDrive   → ⏱️ File aman di cloud
 ```
@@ -170,7 +170,7 @@ Dalam **1.2 detik**, sistem melakukan ini:
 | Worker | Model AI | Status | Lokasi |
 |--------|----------|--------|--------|
 | **Image Generator** | FLUX.1-schnell/dev | ✅ Jalan ✅ | GPU Remote |
-| **Video Generator** | Wan 2.2 | ✅ Jalan ✅ | GPU Remote |
+| **Video Generator** | Wan 2.7 I2V (DashScope) | ✅ Jalan ✅ | Cloud API |
 | **LoRA Training** | Kohya / SimpleTuner | 🔄 Siap, belum di-deploy | — |
 | **Modal (cadangan)** | A100 GPU | 🆕 Sudah ditambahkan | Modal cloud |
 
@@ -214,7 +214,7 @@ titan-aio/
 │   ├── gdrive/     → Google Drive 5TB
 │   ├── mongodb/    → Database cloud
 │   └── publisher/  → Upload otomatis
-├── Workers/        → FLUX · Wan 2.2 · Modal
+├── Workers/        → FLUX · Wan 2.7 · Modal
 ├── Database/       → Model data · repository
 ├── Tests/          → 27 class test
 ├── titan/          → Launch pad · config

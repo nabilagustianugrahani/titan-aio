@@ -9,9 +9,9 @@ import pytest
 class TestVideoAvatarTools:
     async def test_generate_video(self):
         from MCP.tools.video_avatar_tools import generate_product_video
-        result = await generate_product_video("p1", "Test script", "wan-2-2")
+        result = await generate_product_video("p1", "Test script", "wan2.7-i2v")
         assert "video_id" in result
-        assert result["model_used"] == "wan-2-2"
+        assert result["model_used"] == "wan2.7-i2v"
 
     async def test_generate_avatar(self):
         from MCP.tools.video_avatar_tools import generate_spokesperson_avatar

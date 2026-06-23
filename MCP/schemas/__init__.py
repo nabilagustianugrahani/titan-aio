@@ -222,8 +222,8 @@ class GenerateImageOutput(BaseModel):
 
 class GenerateVideoInput(BaseModel):
     script: str = Field(..., min_length=1)
-    model: str = "wan-2-2"
-    duration_seconds: int = 30
+    model: str = "wan2.7-i2v"
+    duration_seconds: int = 15
 
 
 class GenerateVideoOutput(BaseModel):
