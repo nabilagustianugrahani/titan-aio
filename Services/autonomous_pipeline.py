@@ -107,15 +107,12 @@ class PipelineState:
 class AutonomousPipeline:
     """Full autonomous pipeline — product URL to published campaign.
 
-    35+ Features Integrated:
-    ────────────────────────
-    Phase 1 (Intelligence): Product, Reviews, Competitors, Trends, Viral Predictor, Trend Monitor, Sentiment, Competitor Spy
-    Phase 2 (Strategy): Offer, Dynamic Pricing, SEO, Compliance, Affiliate Optimizer
-    Phase 3 (Content): Hooks, Scripts, Content Remix, Multilingual (11 languages), Content Ideas
-    Phase 4 (Media): Thumbnail, ML Scorer, Voice Clone, Video, Auto Thumbnail
-    Phase 5 (Optimization): A/B Testing, Versioning, Smart Scheduler, Performance Alerts
-    Phase 6 (Publishing): Cross-Platform, Calendar, Compliance, Anti-Shadowban, Webhook/Telegram
-    Phase 7 (Tracking): Revenue Forecaster, Budget Optimizer, Auto Reports, Competitor Monitor, Social Listener, Multi-Account
+    4 Phases (simplified for maximum speed):
+    ─────────────────────────────────────────
+    Phase 1 (Analyze): Product, Reviews, Trends, Offer
+    Phase 2 (Content): UGC Engine (hooks, scripts, captions, video prompts)
+    Phase 3 (Media): UGC Pipeline (avatar → DashScope I2V → Kaggle fallback)
+    Phase 4 (Publish): Anti-Shadowban → Platform Formatter → Auto-Upload
     """
 
     def __init__(self):
@@ -131,7 +128,7 @@ class AutonomousPipeline:
         include_lip_sync: bool = False,
         auto_publish: bool = True,
     ) -> PipelineState:
-        """Run the full autonomous pipeline with all 35+ features."""
+        """Run the autonomous pipeline: Analyze → Content → Media → Publish."""
         if platforms is None:
             platforms = ["tiktok", "instagram", "facebook"]
 
@@ -143,7 +140,7 @@ class AutonomousPipeline:
         )
 
         print(f"\n{'='*60}")
-        print("🚀 TITAN AIO — AUTONOMOUS PIPELINE (35+ Features)")
+        print("🚀 TITAN AIO — AUTONOMOUS PIPELINE")
         print(f"   ID: {state.pipeline_id}")
         print(f"   URL: {product_url}")
         print(f"   Platforms: {', '.join(platforms)}")
@@ -151,15 +148,13 @@ class AutonomousPipeline:
 
         try:
             # ═══════════════════════════════════════════════════════
-            # PHASE 1: INTELLIGENCE (8 features, parallel)
+            # PHASE 1: ANALYZE (product + reviews + trends)
             # ═══════════════════════════════════════════════════════
-            print("📊 PHASE 1: Intelligence Gathering (8 features)")
+            print("📊 PHASE 1: Analyze Product")
             print("-" * 40)
 
-            product_task = asyncio.create_task(self._run_product_agent(product_url))
-            competitor_task = asyncio.create_task(self._run_competitor_agent())
-            state.product, state.competitors = await asyncio.gather(product_task, competitor_task)
-            state.features_used.extend(["product_agent", "competitor_agent"])
+            state.product = await self._run_product_agent(product_url)
+            state.features_used.append("product_agent")
 
             if state.product:
                 review_task = asyncio.create_task(self._run_review_agent(state.product.get("product_id", "")))
@@ -167,54 +162,15 @@ class AutonomousPipeline:
                 state.reviews, state.trends = await asyncio.gather(review_task, trend_task)
                 state.features_used.extend(["review_agent", "trend_agent"])
 
-                # NEW: Viral Prediction
-                if state.hooks:
-                    viral = await self._run_viral_predictor(state.hooks[0].get("hook", ""), platform="tiktok")
-                    state.viral_scores = [viral]
-                    state.features_used.append("viral_predictor")
-
-                # NEW: Sentiment Monitor
-                sentiment = await self._run_sentiment_monitor(state.product.get("title", "Product"))
-                state.sentiment_data = sentiment
-                state.features_used.append("sentiment_monitor")
-
-            self.bus.publish("intelligence.complete", {
-                "product": state.product.get("title", "")[:50] if state.product else "",
-                "features": len(state.features_used),
-            }, "Pipeline")
-
-            # ═══════════════════════════════════════════════════════
-            # PHASE 2: STRATEGY (5 features)
-            # ═══════════════════════════════════════════════════════
-            print("\n🎯 PHASE 2: Strategy Development (5 features)")
-            print("-" * 40)
-
-            if state.product:
                 state.offer = await self._run_offer_agent(state.product, state.reviews, state.competitors)
                 state.features_used.append("offer_agent")
 
-                # NEW: Dynamic Pricing
-                pricing = await self._run_dynamic_pricing(state.product)
-                state.pricing_analysis = [pricing]
-                state.features_used.append("dynamic_pricing")
-
-                # NEW: SEO Optimization
-                seo = await self._run_seo_optimize(state.product.get("title", ""), niche=state.product.get("category", "general"))
-                state.seo_results = [seo]
-                state.features_used.append("seo_engine")
-
-                # NEW: Compliance Check
-                if state.hooks:
-                    compliance = await self._run_compliance_check(state.hooks[0].get("hook", ""), platform="tiktok")
-                    state.compliance_results = [compliance]
-                    state.features_used.append("compliance_checker")
-
-            self.bus.publish("strategy.complete", {"features": 5}, "Pipeline")
+            self.bus.publish("analyze.complete", {"product": state.product.get("title", "")[:50] if state.product else ""}, "Pipeline")
 
             # ═══════════════════════════════════════════════════════
-            # PHASE 3: UGC CONTENT (6 features, AI-powered)
+            # PHASE 2: CONTENT (UGC hooks, scripts, captions)
             # ═══════════════════════════════════════════════════════
-            print("\n✍️  PHASE 3: UGC Content Creation (6 features)")
+            print("\n✍️  PHASE 2: Generate UGC Content")
             print("-" * 40)
 
             if state.product:
@@ -222,26 +178,9 @@ class AutonomousPipeline:
                 state.hooks = [{"hook": h.text, "style": h.style, "ctr": h.predicted_ctr} for h in ugc_result.hooks]
                 state.scripts = [{"hook": s.hook, "full_script": s.full_script, "style": s.style, "duration": s.duration_seconds} for s in ugc_result.scripts]
                 state.video_prompts = ugc_result.video_prompts
-                state.features_used.extend(["ugc_engine"])
+                state.features_used.append("ugc_engine")
 
-                # NEW: Content Remix
-                if state.hooks:
-                    remix = await self._run_content_remix(state.hooks[0].get("hook", ""))
-                    state.content_remix = remix
-                    state.features_used.append("content_remix")
-
-                # NEW: Multilingual
-                if state.hooks:
-                    ml = await self._run_multilingual(state.hooks[0].get("hook", ""))
-                    state.multilingual = ml
-                    state.features_used.append("multilingual")
-
-                # NEW: Content Ideas
-                ideas = await self._run_content_ideas(niche=state.product.get("category", "general"))
-                state.content_ideas = ideas
-                state.features_used.append("content_ideas")
-
-            self.bus.publish("ugc.complete", {"features": 6}, "Pipeline")
+            self.bus.publish("content.complete", {"hooks": len(state.hooks), "scripts": len(state.scripts)}, "Pipeline")
 
             # ═══════════════════════════════════════════════════════
             # PHASE 4: MEDIA (5 features)
@@ -250,9 +189,10 @@ class AutonomousPipeline:
             print("-" * 40)
 
             if state.scripts:
-                videos = await self._generate_videos(state.scripts, state.product, num_variants)
+                # Use UGC pipeline for avatar-consistent videos
+                videos = await self._generate_ugc_videos(state.product, num_variants)
                 state.video_variants = videos
-                state.features_used.append("video_generator")
+                state.features_used.extend(["ugc_pipeline", "video_generator"])
 
                 # NEW: Auto Thumbnail
                 thumbnails = await self._run_auto_thumbnail(state.product.get("title", "Product") if state.product else "Product")
@@ -267,43 +207,14 @@ class AutonomousPipeline:
             self.bus.publish("video.complete", {"features": 5}, "Pipeline")
 
             # ═══════════════════════════════════════════════════════
-            # PHASE 5: POST-PRODUCTION
-            # ═══════════════════════════════════════════════════════
-            if include_lip_sync and state.video_variants:
-                print("\n🎭 PHASE 5: Post-Production")
-                print("-" * 40)
-                lip_results = await self._post_production(state.video_variants)
-                state.lip_sync_videos = lip_results
-                state.features_used.append("lip_sync")
-
-            # ═══════════════════════════════════════════════════════
-            # PHASE 6: PUBLISHING (4 features)
+            # PHASE 4: PUBLISH (auto-upload to platforms)
             # ═══════════════════════════════════════════════════════
             if auto_publish and state.video_variants:
-                print("\n📱 PHASE 6: Publishing (4 features)")
+                print("\n📱 PHASE 4: Publish to Platforms")
                 print("-" * 40)
                 state.platform_posts = await self._publish(state.video_variants, state.hooks, platforms)
-                state.features_used.extend(["publisher", "anti_shadowban", "content_calendar", "compliance"])
+                state.features_used.extend(["publisher", "anti_shadowban"])
                 self.bus.publish("publish.complete", {"platforms": list(state.platform_posts.keys())}, "Pipeline")
-
-            # ═══════════════════════════════════════════════════════
-            # PHASE 7: TRACKING & OPTIMIZATION (7 features)
-            # ═══════════════════════════════════════════════════════
-            print("\n📈 PHASE 7: Tracking & Optimization (7 features)")
-            print("-" * 40)
-
-            # NEW: Revenue Forecast
-            forecast = await self._run_revenue_forecast()
-            state.revenue_forecast = forecast
-            state.features_used.append("revenue_forecaster")
-
-            # NEW: Auto Report
-            report = await self._run_auto_report()
-            state.report = report
-            state.features_used.append("auto_reports")
-
-            # Existing tracking
-            await self._track_and_optimize(state)
 
             # ═══════════════════════════════════════════════════════
             # COMPLETE
@@ -506,7 +417,42 @@ class AutonomousPipeline:
         scripts = [UGCScript(hook=s.get("full_script", "")[:50], problem="", solution="", demo="", social_proof="", cta="", full_script=s.get("full_script", ""), duration_seconds=30, style="talking_head") for s in content.get("scripts", [])]
         return UGCResult(hooks=hooks, scripts=scripts, captions=[], video_prompts=[], product_title=product.get("title", ""), category=product.get("category", "umum"))
 
-    # ── Video Generation ─────────────────────────────────────────
+    # ── UGC Video Generation ────────────────────────────────────
+
+    async def _generate_ugc_videos(self, product: dict, num_variants: int) -> list[dict]:
+        """Generate videos using UGC pipeline (avatar + DashScope I2V)."""
+        try:
+            from Services.ugc.pipeline import UGCPipeline
+            ugc = UGCPipeline()
+            result = await ugc.run(
+                product_title=product.get("title", "Product"),
+                product_description=product.get("description", ""),
+                category=product.get("category", "umum"),
+                price=product.get("price", 0),
+                num_videos=num_variants,
+            )
+
+            videos = []
+            for v in result.videos:
+                videos.append({
+                    "variant_id": f"ugc-{uuid.uuid4().hex[:8]}",
+                    "label": v.variant_label,
+                    "style": "ugc_i2v",
+                    "hook": v.prompt[:100],
+                    "script": v.prompt,
+                    "video_path": v.video_path,
+                    "video_url": v.video_url,
+                    "source": v.source,
+                })
+
+            print(f"  ✅ UGC Pipeline: {sum(1 for v in videos if v.get('video_path'))}/{len(videos)} videos")
+            return videos
+
+        except Exception as e:
+            print(f"  ⚠️ UGC Pipeline failed: {e}, falling back to GoogleFlow")
+            return await self._generate_videos([], product, num_variants)
+
+    # ── Video Generation (fallback) ─────────────────────────────
 
     async def _generate_videos(
         self, scripts: list[dict], product: dict, num_variants: int
@@ -864,4 +810,3 @@ class AutonomousPipeline:
         except Exception as e:
             print(f"  ⚠️  Auto Report error: {e}")
             return {"score": 0, "error": str(e)}
-        print(f"  💾 State saved: {state_path}")

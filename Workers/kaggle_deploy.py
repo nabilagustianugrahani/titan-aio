@@ -11,7 +11,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -42,7 +41,7 @@ def deploy_to_kaggle(notebook_path: str, dataset_name: str = ""):
 
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode == 0:
-            print(f"Notebook uploaded to Kaggle!")
+            print("Notebook uploaded to Kaggle!")
             print(result.stdout)
         else:
             print(f"Upload failed: {result.stderr}")
@@ -53,12 +52,13 @@ def deploy_to_kaggle(notebook_path: str, dataset_name: str = ""):
 
 def main():
     parser = argparse.ArgumentParser(description="TITAN AIO Kaggle Deployment")
-    parser.add_argument("--task", choices=["video", "lip-sync", "image"], required=True)
+    parser.add_argument("--task", choices=["video", "lip-sync", "image", "lora"], required=True)
     parser.add_argument("--script", default="Product review, person holding power bank")
     parser.add_argument("--model", default="wan-2-2", choices=["wan-2-2", "hunyuan"])
     parser.add_argument("--face", help="Face image for lip sync")
     parser.add_argument("--audio", help="Audio file for lip sync")
     parser.add_argument("--prompt", default="Product photography, white background")
+    parser.add_argument("--product-name", default="character", help="Product/character name for LoRA")
     parser.add_argument("--output", default="/tmp/titan_kaggle_notebook.ipynb")
     parser.add_argument("--deploy", action="store_true", help="Upload to Kaggle")
     args = parser.parse_args()
@@ -79,6 +79,14 @@ def main():
         notebook = gen.create_image_notebook(
             prompt=args.prompt,
             model="flux-schnell",
+        )
+    elif args.task == "lora":
+        notebook = gen.create_lora_training_notebook(
+            product_name=args.product_name,
+            base_model="flux-schnell",
+            num_epochs=100,
+            learning_rate=1e-4,
+            resolution=512,
         )
 
     gen.save_notebook(notebook, args.output)

@@ -98,6 +98,10 @@ class CharacterConsistency:
     ) -> VideoResult:
         """Generate video using reference avatar.
 
+        Priority:
+        1. DashScope Wan 2.7 I2V (primary — cloud, no GPU)
+        2. Google Veo (fallback)
+
         Uses img2vid with saved reference image.
         Ensures same face in every video.
         """
@@ -107,7 +111,12 @@ class CharacterConsistency:
             await self.generate_avatar(profile_name)
             avatar_path = self._get_avatar_path(profile_name)
 
-        # Try Google Veo first (img2vid)
+        # 1. Try DashScope I2V (preferred — cloud, no local GPU)
+        result = await self._video_with_dashscope(prompt, avatar_path, duration_sec)
+        if result.success:
+            return result
+
+        # 2. Fallback to Google Veo
         result = await self._video_with_veo(prompt, avatar_path, duration_sec)
         if result.success:
             return result
@@ -210,6 +219,50 @@ class CharacterConsistency:
                 image_path="", seed=seed, profile_name=profile_name,
                 prompt="placeholder", success=False, error=str(e),
             )
+
+    async def _video_with_dashscope(
+        self, prompt: str, avatar_path: Path, duration_sec: int
+    ) -> VideoResult:
+        """Generate video using DashScope Wan 2.7 I2V (img2vid)."""
+        api_key = os.environ.get("DASHSCOPE_API_KEY", "")
+        if not api_key or not avatar_path.exists():
+            return VideoResult(video_path="", duration_sec=0, model="dashscope", success=False)
+
+        try:
+            # Read avatar as base64 data URI
+            import base64
+            with open(avatar_path, "rb") as f:
+                img_bytes = f.read()
+            b64 = base64.b64encode(img_bytes).decode()
+            mime = "image/png" if str(avatar_path).endswith(".png") else "image/jpeg"
+            data_uri = f"data:{mime};base64,{b64}"
+
+            from Services.generation.dashscope_video import generate_video
+            video_url = await generate_video(
+                image_url=data_uri,
+                prompt=prompt,
+                duration=duration_sec,
+            )
+
+            if video_url:
+                # Download video
+                import httpx
+                import uuid
+                video_path = str(self.VIDEOS_DIR / f"dash-{uuid.uuid4().hex[:8]}.mp4")
+                async with httpx.AsyncClient(timeout=60) as client:
+                    resp = await client.get(video_url)
+                    with open(video_path, "wb") as f:
+                        f.write(resp.content)
+
+                return VideoResult(
+                    video_path=video_path, duration_sec=duration_sec,
+                    model="dashscope", success=True,
+                )
+
+        except Exception:
+            pass
+
+        return VideoResult(video_path="", duration_sec=0, model="dashscope", success=False)
 
     async def _video_with_veo(
         self, prompt: str, avatar_path: Path, duration_sec: int
