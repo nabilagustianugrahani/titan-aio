@@ -4,6 +4,8 @@ from datetime import datetime
 import hashlib
 import logging
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
 class TelegramConfig(BaseModel):
@@ -25,6 +27,7 @@ class TelegramBot:
         self.messages: list[TelegramMessage] = []
         self.command_history: list[dict] = []
         self._bus_subscribed = False
+        self._client: httpx.AsyncClient | None = None
         self._commands = {
             "start": (
                 "🤖 <b>Titan AIO Bot</b>\n\n"
@@ -52,19 +55,160 @@ class TelegramBot:
         )
         return self.config
 
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = httpx.AsyncClient(
+                timeout=30.0,
+                base_url=f"https://api.telegram.org/bot{self.config.bot_token}",
+            )
+        return self._client
+
+    async def close(self) -> None:
+        self._polling = False
+        if self._client and not self._client.is_closed:
+            await self._client.aclose()
+            self._client = None
+
+    # ------------------------------------------------------------------
+    # Webhook management
+    # ------------------------------------------------------------------
+
+    async def set_webhook(self, url: str, secret_token: str = "") -> dict:
+        client = await self._get_client()
+        payload: dict = {"url": url, "allowed_updates": ["message", "callback_query"]}
+        if secret_token:
+            payload["secret_token"] = secret_token
+        resp = await client.post("/setWebhook", json=payload)
+        return resp.json()
+
+    async def remove_webhook(self) -> dict:
+        client = await self._get_client()
+        resp = await client.post("/removeWebhook")
+        return resp.json()
+
+    async def get_webhook_info(self) -> dict:
+        client = await self._get_client()
+        resp = await client.get("/getWebhookInfo")
+        return resp.json()
+
+    # ------------------------------------------------------------------
+    # Long-polling mode (no HTTPS required)
+    # ------------------------------------------------------------------
+
+    _polling: bool = False
+
+    async def start_polling(self) -> None:
+        """Start long-polling for Telegram updates. Runs until close()."""
+        import sys
+        self._polling = True
+        offset = 0
+        print("[telegram] Polling started", flush=True)
+        while self._polling:
+            try:
+                client = await self._get_client()
+                resp = await client.get(
+                    "/getUpdates",
+                    params={"offset": offset, "timeout": 30, "allowed_updates": '["message"]'},
+                )
+                data = resp.json()
+                if not data.get("ok"):
+                    print(f"[telegram] getUpdates error: {data.get('description')}", flush=True)
+                    import asyncio
+                    await asyncio.sleep(5)
+                    continue
+
+                for update in data.get("result", []):
+                    offset = update["update_id"] + 1
+                    message = update.get("message")
+                    if not message:
+                        continue
+
+                    chat_id = str(message.get("chat", {}).get("id", ""))
+                    text = message.get("text", "")
+
+                    if not text.startswith("/"):
+                        continue
+
+                    parts = text.split(maxsplit=1)
+                    command = parts[0].lstrip("/").split("@")[0].lower()
+                    args = parts[1] if len(parts) > 1 else ""
+
+                    print(f"[telegram] /{command} from {chat_id}", flush=True)
+                    response_text = await self.handle_command(
+                        command=command, chat_id=chat_id, args=args
+                    )
+                    send_result = await self.send_message(chat_id=chat_id, text=response_text)
+                    print(f"[telegram] Response sent: {send_result.status}", flush=True)
+
+            except Exception as e:
+                print(f"[telegram] Polling error: {e}", flush=True)
+                import asyncio
+                await asyncio.sleep(5)
+
+    def stop_polling(self) -> None:
+        self._polling = False
+
     async def send_message(
         self, chat_id: str, text: str, parse_mode: str = "HTML"
     ) -> TelegramMessage:
-        msg_id = hashlib.md5(
-            f"{chat_id}:{text[:50]}".encode()
-        ).hexdigest()[:10]
-        msg = TelegramMessage(
-            message_id=msg_id,
-            chat_id=chat_id,
-            text=text,
-            parse_mode=parse_mode,
-            sent_at=datetime.now().isoformat(),
-        )
+        # Test mode: skip real API calls (used by unit tests with "test:" token prefix)
+        if self.config.bot_token.startswith("test:"):
+            msg_id = hashlib.md5(
+                f"{chat_id}:{text[:50]}".encode()
+            ).hexdigest()[:10]
+            msg = TelegramMessage(
+                message_id=msg_id,
+                chat_id=chat_id,
+                text=text,
+                parse_mode=parse_mode,
+                sent_at=datetime.now().isoformat(),
+            )
+            self.messages.append(msg)
+            return msg
+
+        # Real API call
+        try:
+            client = await self._get_client()
+            resp = await client.post(
+                "/sendMessage",
+                json={
+                    "chat_id": chat_id,
+                    "text": text,
+                    "parse_mode": parse_mode,
+                },
+            )
+            data = resp.json()
+            if data.get("ok"):
+                result = data["result"]
+                msg = TelegramMessage(
+                    message_id=str(result.get("message_id", "")),
+                    chat_id=str(result.get("chat", {}).get("id", chat_id)),
+                    text=text,
+                    parse_mode=parse_mode,
+                    sent_at=datetime.now().isoformat(),
+                    status="sent",
+                )
+            else:
+                desc = data.get("description", "unknown error")
+                logger.error("Telegram API error: %s", desc)
+                msg = TelegramMessage(
+                    message_id="",
+                    chat_id=chat_id,
+                    text=text,
+                    parse_mode=parse_mode,
+                    sent_at=datetime.now().isoformat(),
+                    status=f"error: {desc}",
+                )
+        except Exception as e:
+            logger.error("Failed to send Telegram message: %s", e)
+            msg = TelegramMessage(
+                message_id="",
+                chat_id=chat_id,
+                text=text,
+                parse_mode=parse_mode,
+                sent_at=datetime.now().isoformat(),
+                status=f"error: {e}",
+            )
         self.messages.append(msg)
         return msg
 

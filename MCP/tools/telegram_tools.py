@@ -4,6 +4,15 @@ _bot = None
 
 def _get_bot():
     global _bot
+    # Prefer shared instance from main.py (already configured with token + webhook)
+    try:
+        from titan.main import get_telegram_bot
+        shared = get_telegram_bot()
+        if shared is not None:
+            return shared
+    except (ImportError, AttributeError):
+        pass
+    # Fallback: create standalone instance
     if _bot is None:
         from Services.notifications.telegram_bot import TelegramBot
         _bot = TelegramBot()

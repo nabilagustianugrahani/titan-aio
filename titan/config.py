@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     # HuggingFace
     HF_TOKEN: str = ""
 
+    # Telegram Bot
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_WEBHOOK_SECRET: str = ""
+    TELEGRAM_WEBHOOK_URL: str = ""  # e.g. "https://your-vps.com/webhook"
+
 
     # Success Thresholds
     GROWTH_SCALE_ROI: float = 2.0
