@@ -30,6 +30,7 @@ from MCP.schemas import (
     GenerateScriptOutput,
     GenerateThumbnailOutput,
     GenerateImageOutput,
+    ThumbnailConcept,
 )
 from Services.agents.message_bus import get_bus
 from Services.agents.pipeline import Pipeline
@@ -223,12 +224,25 @@ class CEOAgent:
         hooks_output = GenerateHooksOutput(product_id=product.product_id, hooks=state.hooks)
         scripts_output = GenerateScriptOutput(product_id=product.product_id, scripts=state.scripts)
         # ContentAgent returns thumbnail as single GenerateThumbnailOutput
-        # Pipeline stores it in state.thumbnails, but it might be the Pydantic model directly
+        # Pipeline stores it in state.thumbnails as nested dict
         if state.thumbnails:
             thumb = state.thumbnails[0]
-            thumbnail_output = thumb if isinstance(thumb, GenerateThumbnailOutput) else GenerateThumbnailOutput(
-                product_id=product.product_id, thumbnail=thumb.get("thumbnail", {}) if isinstance(thumb, dict) else thumb
-            )
+            if isinstance(thumb, GenerateThumbnailOutput):
+                thumbnail_output = thumb
+            elif isinstance(thumb, dict):
+                # thumb = {"thumbnail": {"product_id": ..., "thumbnail": {...}, "image_url": ...}}
+                inner = thumb.get("thumbnail", thumb)
+                if isinstance(inner, dict):
+                    tc = inner.get("thumbnail", {})
+                    thumbnail_output = GenerateThumbnailOutput(
+                        product_id=inner.get("product_id", product.product_id),
+                        thumbnail=tc if isinstance(tc, ThumbnailConcept) else ThumbnailConcept(**tc) if isinstance(tc, dict) else ThumbnailConcept(),
+                        image_url=inner.get("image_url"),
+                    )
+                else:
+                    thumbnail_output = GenerateThumbnailOutput(product_id=product.product_id)
+            else:
+                thumbnail_output = GenerateThumbnailOutput(product_id=product.product_id)
         else:
             thumbnail_output = GenerateThumbnailOutput(product_id=product.product_id)
         image_output = GenerateImageOutput(image_url="", model_used="flux-schnell", seed=0)
