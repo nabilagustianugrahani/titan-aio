@@ -52,7 +52,12 @@ RUN pip install --no-cache-dir \
     "python-dotenv>=1.0.0" \
     "beautifulsoup4>=4.12.0" \
     "lxml>=5.3.0" \
-    "google-genai>=2.0.0"
+    "google-genai>=2.0.0" \
+    "pymongo>=4.7.0" \
+    "motor>=3.5.0" \
+    "notion-client>=2.2.0" \
+    "edge-tts>=6.1.9" \
+    "Pillow>=10.0.0"
 
 # Layer 2: Install titan-aio package (no heavy deps)
 COPY pyproject.toml /app/

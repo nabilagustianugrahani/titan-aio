@@ -1,3 +1,13 @@
+---
+title: TITAN AIO
+emoji: 🤖
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+pinned: false
+license: mit
+---
+
 # TITAN AIO
 
 **Autonomous Affiliate Intelligence Operating System**

@@ -51,6 +51,7 @@ class SharedState(BaseModel):
     features_used: list[str] = Field(default_factory=list)
     started_at: str = ""
     completed_at: str = ""
+    cloud_synced: dict = Field(default_factory=dict)  # {mongodb: bool, notion: bool}
 
     def mark_error(self, agent: str, error: str) -> None:
         """Record an agent error."""

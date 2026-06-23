@@ -136,6 +136,9 @@ class Pipeline:
             # ── Phase 5: Publishing ────────────────────────────────
             await self._run_publishing(state)
 
+            # ── Phase 6: Cloud Sync (optional, non-blocking) ──
+            await self._sync_cloud(state)
+
         except Exception as e:
             state.errors.append({
                 "phase": "pipeline",
@@ -304,6 +307,90 @@ class Pipeline:
             {"campaign_id": state.campaign_id},
             "Pipeline",
         )
+
+    async def _sync_cloud(self, state: SharedState) -> None:
+        """Phase 6: Sync to MongoDB (analytics) + Notion (dashboard).
+
+        Non-blocking: failures are logged, not raised.
+        MongoDB stores time-series analytics for querying.
+        Notion pushes campaign + knowledge for dashboard monitoring.
+        """
+        # ── MongoDB: store campaign analytics ──
+        try:
+            from titan.config import settings
+            if settings.MONGODB_URI:
+                from Services.mongodb.client import MongoDBClient
+                mongo = MongoDBClient.get_instance()
+                doc = {
+                    "pipeline_id": state.pipeline_id,
+                    "campaign_id": state.campaign_id,
+                    "product": state.product,
+                    "hooks_count": len(state.hooks),
+                    "scripts_count": len(state.scripts),
+                    "features_used": state.features_used,
+                    "errors": state.errors,
+                    "started_at": state.started_at,
+                    "completed_at": state.completed_at,
+                    "duration_seconds": state.duration_seconds(),
+                }
+                await mongo.insert_one_async("pipeline_runs", doc)
+                state.cloud_synced["mongodb"] = True
+                self.bus.publish("cloud.mongodb.synced", {"pipeline_id": state.pipeline_id}, "Pipeline")
+        except Exception as e:
+            logger.warning(f"MongoDB sync failed: {e}")
+
+        # ── Notion: push campaign + knowledge to dashboard ──
+        try:
+            from titan.config import settings
+            if settings.NOTION_TOKEN and settings.NOTION_CAMPAIGN_DB:
+                from Services.notion.sync import NotionDashboard
+                dashboard = NotionDashboard()
+                # Build a minimal AffiliatePackageOutput for Notion
+                product_title = _safe_get(state.product, "title", "Unknown") if state.product else "Unknown"
+                product_url = _safe_get(state.product, "url", "") if state.product else ""
+                product_price = _safe_get(state.product, "price", 0) if state.product else 0
+
+                from MCP.schemas import (
+                    AffiliatePackageOutput, AnalyzeProductOutput,
+                    AnalyzeReviewsOutput, AnalyzeCompetitorsOutput,
+                    GenerateOfferOutput, GenerateHooksOutput,
+                    GenerateScriptOutput, GenerateThumbnailOutput,
+                    GenerateImageOutput,
+                )
+                package = AffiliatePackageOutput(
+                    product=AnalyzeProductOutput(
+                        product_id=state.campaign_id,
+                        title=product_title,
+                        price=product_price,
+                        url=product_url,
+                    ),
+                    review_summary=AnalyzeReviewsOutput(
+                        product_id=state.campaign_id,
+                        total_reviews_analyzed=0,
+                        average_rating=0,
+                        sentiment_summary="",
+                        benefits=[], objections=[], pain_points=[], top_quotes=[],
+                    ),
+                    competitor_analysis=AnalyzeCompetitorsOutput(
+                        competitors_analyzed=0, competitors=[],
+                        winning_hooks=[], market_gaps=[], recommendations=[],
+                    ),
+                    offer_strategy=GenerateOfferOutput(
+                        product_id=state.campaign_id,
+                        primary_angle="",
+                        value_proposition="",
+                    ),
+                    hooks=GenerateHooksOutput(product_id=state.campaign_id),
+                    scripts=GenerateScriptOutput(product_id=state.campaign_id),
+                    thumbnail=GenerateThumbnailOutput(product_id=state.campaign_id),
+                    image=GenerateImageOutput(image_url=""),
+                )
+                package.campaign_id = state.campaign_id
+                result = dashboard.push_affiliate_package(package)
+                state.cloud_synced["notion"] = True
+                self.bus.publish("cloud.notion.synced", result, "Pipeline")
+        except Exception as e:
+            logger.warning(f"Notion sync failed: {e}")
 
     # ── Agent Runner ───────────────────────────────────────────────
 
