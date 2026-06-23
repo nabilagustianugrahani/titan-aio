@@ -22,13 +22,18 @@ from Database.models import Campaign
 from Database.repository import Repository
 from MCP.schemas import (
     AffiliatePackageOutput,
+    AnalyzeCompetitorsOutput,
     AnalyzeProductOutput,
+    AnalyzeReviewsOutput,
+    GenerateOfferOutput,
     GenerateHooksOutput,
     GenerateScriptOutput,
     GenerateThumbnailOutput,
     GenerateImageOutput,
 )
 from Services.agents.message_bus import get_bus
+from Services.agents.pipeline import Pipeline
+from Services.agents.shared_state import SharedState
 from Services.agents.affiliate import AffiliateAgent
 from Services.agents.analytics import AnalyticsAgent
 from Services.agents.asset import AssetAgent
@@ -158,50 +163,74 @@ class CEOAgent:
         self.multi_niche = MultiNicheManager()
 
     async def create_affiliate_package(self, url: str, include_video: bool = False, include_avatar: bool = False) -> AffiliatePackageOutput:
-        """Orchestrate the full affiliate package pipeline with MessageBus events."""
+        """Orchestrate the full affiliate package pipeline using Pipeline.
+
+        Agents communicate via SharedState + MessageBus:
+        - ProductAgent writes state.product
+        - ReviewAgent reads state.product, writes state.reviews
+        - CompetitorAgent reads state.product, writes state.competitors
+        - OfferAgent reads state.product/reviews/competitors, writes state.offer
+        - ContentAgent reads state.offer, writes state.hooks/scripts/thumbnails
+        - VideoAgent reads state.scripts, writes state.video
+        - CampaignBuilder reads state, writes state.campaign_id
+        """
         bus = get_bus()
 
-        # 1. Product analysis
-        product_data = await self.product(url=url)
-        bus.publish("product.analyzed", product_data, "ProductAgent")
-        product = AnalyzeProductOutput(
-            product_id=product_data.get("product_id", ""),
-            title=product_data.get("title", ""),
-            price=product_data.get("price", 0),
-            currency=product_data.get("currency", "IDR"),
-            rating=product_data.get("rating"),
-            total_sales=product_data.get("total_sales"),
-            category=product_data.get("category"),
-            commission_estimate=product_data.get("price", 0) * 0.05,
-            competition_level=product_data.get("competition_level", "medium"),
-            product_score=product_data.get("product_score", 0),
-            url=product_data.get("url", ""),
+        # Build agent registry for Pipeline
+        agents = {
+            "product": self.product,
+            "review": self.review,
+            "competitor": self.competitor,
+            "offer": self.offer,
+            "content": self.content,
+        }
+        if include_video:
+            agents["video"] = self.video
+        if include_avatar:
+            agents["avatar"] = self.avatar
+        agents["campaign_builder"] = self.campaign_builder
+
+        # Run pipeline
+        pipeline = Pipeline(agents=agents, bus=bus)
+        state = await pipeline.run(
+            url=url,
+            include_video=include_video,
+            include_avatar=include_avatar,
         )
 
-        # 2. Reviews
-        reviews = await self.review(product_id=product.product_id)
-        bus.publish("reviews.analyzed", {"product_id": product.product_id, "count": reviews.total_reviews_analyzed}, "ReviewAgent")
-
-        # 3. Competitors
-        competitors = await self.competitor(category=product.category or "umum")
-        bus.publish("competitors.analyzed", {"category": product.category, "count": competitors.competitors_analyzed}, "CompetitorAgent")
-
-        # 4. Offer
-        offer = await self.offer(product=product, reviews=reviews, competitors=competitors)
-        bus.publish("offer.created", {"product_id": product.product_id, "angle": offer.primary_angle}, "OfferAgent")
-
-        # 5. Content (UGC + Creative combined)
-        content_result = await self.content(
-            product_id=product.product_id,
-            offer_strategy=offer,
-            category=product.category or "umum",
-            title=product.title,
+        # Convert SharedState → AffiliatePackageOutput
+        product = state.product if isinstance(state.product, AnalyzeProductOutput) else (
+            AnalyzeProductOutput(**state.product) if state.product else AnalyzeProductOutput(
+                product_id="", title="", price=0
+            )
         )
-        bus.publish("content.generated", {"product_id": product.product_id}, "ContentAgent")
-
-        hooks_output = content_result.get("hooks", GenerateHooksOutput(product_id=product.product_id))
-        scripts_output = content_result.get("scripts", GenerateScriptOutput(product_id=product.product_id))
-        thumbnail_output = content_result.get("thumbnail", GenerateThumbnailOutput(product_id=product.product_id))
+        reviews = state.reviews if isinstance(state.reviews, AnalyzeReviewsOutput) else (
+            AnalyzeReviewsOutput(**state.reviews) if state.reviews else AnalyzeReviewsOutput(
+                product_id=product.product_id, total_reviews_analyzed=0, average_rating=0,
+                sentiment_summary="", benefits=[], objections=[], pain_points=[], top_quotes=[],
+            )
+        )
+        competitors = state.competitors if isinstance(state.competitors, AnalyzeCompetitorsOutput) else (
+            AnalyzeCompetitorsOutput(**state.competitors) if state.competitors else AnalyzeCompetitorsOutput(
+                competitors_analyzed=0, competitors=[], winning_hooks=[], market_gaps=[], recommendations=[],
+            )
+        )
+        offer = state.offer if isinstance(state.offer, GenerateOfferOutput) else (
+            GenerateOfferOutput(**state.offer) if state.offer else GenerateOfferOutput(
+                product_id=product.product_id, primary_angle="", value_proposition="",
+            )
+        )
+        hooks_output = GenerateHooksOutput(product_id=product.product_id, hooks=state.hooks)
+        scripts_output = GenerateScriptOutput(product_id=product.product_id, scripts=state.scripts)
+        # ContentAgent returns thumbnail as single GenerateThumbnailOutput
+        # Pipeline stores it in state.thumbnails, but it might be the Pydantic model directly
+        if state.thumbnails:
+            thumb = state.thumbnails[0]
+            thumbnail_output = thumb if isinstance(thumb, GenerateThumbnailOutput) else GenerateThumbnailOutput(
+                product_id=product.product_id, thumbnail=thumb.get("thumbnail", {}) if isinstance(thumb, dict) else thumb
+            )
+        else:
+            thumbnail_output = GenerateThumbnailOutput(product_id=product.product_id)
         image_output = GenerateImageOutput(image_url="", model_used="flux-schnell", seed=0)
 
         result = AffiliatePackageOutput(
@@ -209,25 +238,21 @@ class CEOAgent:
             offer_strategy=offer, hooks=hooks_output, scripts=scripts_output,
             thumbnail=thumbnail_output, image=image_output,
         )
+        result.campaign_id = state.campaign_id
 
-        # Phase 3
-        if include_video and scripts_output.scripts:
-            video_result = await self.video(script=scripts_output.scripts[0].full_script)
-            result.video = _SimpleVideoOutput(video_result["url"], video_result["model_used"], video_result["duration_seconds"])
-            bus.publish("video.generated", {"url": video_result["url"]}, "VideoAgent")
+        if state.video:
+            result.video = _SimpleVideoOutput(
+                state.video.get("url", ""),
+                state.video.get("model_used", ""),
+                state.video.get("duration_seconds", 0),
+            )
+        if state.avatar:
+            result.avatar = _SimpleAvatarOutput(
+                state.avatar.get("avatar_id", ""),
+                state.avatar.get("image_url", ""),
+                state.avatar.get("persona", {}),
+            )
 
-        if include_avatar:
-            avatar_result = await self.avatar(name="AI Spokesperson")
-            result.avatar = _SimpleAvatarOutput(avatar_result["avatar_id"], avatar_result.get("image_url", ""), avatar_result["persona"])
-
-        # Save
-        async with async_session_factory() as session:
-            repo = Repository(session, Campaign)
-            campaign = await repo.create(product_id=product.product_id, name=f"Campaign - {product.title[:50]}", status="active")
-            result.campaign_id = campaign.id
-            await session.commit()
-
-        bus.publish("campaign.created", {"campaign_id": result.campaign_id, "product": product.title}, "CEOAgent")
         return result
 
     async def analyze_trends(self, category: str = "") -> dict:
