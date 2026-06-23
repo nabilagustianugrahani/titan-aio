@@ -40,10 +40,17 @@ async def generate_video(
     Returns:
         Video URL (valid 24h) or None on failure
     """
+    # Try primary workspace first, fallback to others
     api_key = api_key or os.environ.get("DASHSCOPE_API_KEY", "")
     api_host = api_host or os.environ.get(
         "DASHSCOPE_API_HOST",
         "ws-6ruus62c68y9yve4.ap-southeast-1.maas.aliyuncs.com",
+    )
+    # Fallback workspaces
+    api_key_vbb = os.environ.get("DASHSCOPE_API_KEY_VBB", "")
+    api_host_vbb = os.environ.get(
+        "DASHSCOPE_API_HOST_VBB",
+        "ws-c9bajey2bfhtvwru.ap-southeast-1.maas.aliyuncs.com",
     )
 
     if not api_key:
@@ -52,6 +59,30 @@ async def generate_video(
 
     base_url = f"https://{api_host}"
 
+    # Try primary workspace, fallback to Vbb
+    workspaces = [(api_key, base_url)]
+    if api_key_vbb:
+        workspaces.append((api_key_vbb, f"https://{api_host_vbb}"))
+
+    for ws_key, ws_url in workspaces:
+        result = await _try_generate(ws_key, ws_url, image_url, prompt, duration, resolution)
+        if result:
+            return result
+        print("⚠️ Primary failed, trying Vbb workspace...")
+
+    print("❌ All DashScope workspaces failed")
+    return None
+
+
+async def _try_generate(
+    api_key: str,
+    base_url: str,
+    image_url: str,
+    prompt: str,
+    duration: int,
+    resolution: str,
+) -> Optional[str]:
+    """Try video generation with one workspace."""
     # Step 1: Create async task
     try:
         async with httpx.AsyncClient(timeout=30) as client:

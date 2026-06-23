@@ -141,26 +141,28 @@ Optional: `REDIS_URL`, `S3_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET`, `MONGODB_PUBL
 
 ## Video & Image Pipeline
 
-GPU work runs on **Modal** workers (never on VPS):
+**ALL GPU work runs remotely — NEVER on VPS (859MB RAM).**
 
-| Model | Task | GPU | Timeout |
-|-------|------|-----|---------|
-| Wan 2.7 I2V (DashScope) | Video generation (cloud) | — | 15min |
-| FLUX.1-schnell | Image generation | A100 | 900s |
-| SD 3.5 Medium | Image generation | T4 | 600s |
-| Wan 2.2 T2V-A14B | Video generation (GPU fallback) | A100 | 900s |
-| Google Veo 2 | Video generation (API) | — | — |
+Dispatch priority (cloud/API first, GPU last):
 
-**Dispatch pattern:**
-- **Primary**: DashScope Wan 2.7 I2V (cloud, no GPU needed) → `Services/generation/dashscope_video.py`
-- `Workers/modal_a100.py` → `@app.function(gpu="A100")` for FLUX & Wan 2.2 fallback
-- `Workers/modal_image.py` → `@app.function(gpu="T4")` for SD 3.5
-- `Services/video/google_flow.py` → Google Veo 2 API client (safe for VPS, no memory issues)
-- `Services/video/vimax_adapter.py` → ViMax multi-shot adapter
-- `Services/video/lip_sync.py` → Wav2Lip (primary), SadTalker (fallback), Wan native (no face)
-- `Services/video/variant_generator.py` → A/B batch variant generation
+| Model | Task | Where | Cost |
+|-------|------|-------|------|
+| Wan 2.7 I2V (DashScope) | Video I2V (primary) | Alibaba Cloud | API credits |
+| Google Veo 2 | Video I2V (fallback) | Google Cloud | API credits |
+| Kaggle T4 x2 (32GB) | LoRA training + I2V/T2V | Kaggle (free) | 30h/week |
+| Modal GPU | Last resort GPU | Modal (paid) | $ credits |
 
-**UGC flow:** `Services/ugc/engine.py` generates AI video prompts (Gemini 2.5 Flash) → DashScope Wan 2.7 I2V (primary) or Modal GPU (fallback) → Download results → Assembly
+**Dispatch chain for video:**
+1. DashScope Wan 2.7 I2V (cloud API, no GPU) → `Services/generation/dashscope_video.py`
+2. Google Veo 2 (cloud API) → `Services/video/google_flow.py`
+3. Kaggle T4 x2 (free GPU, 32GB) → `Workers/kaggle_video.py`, `Workers/kaggle_setup.py`
+4. Modal GPU (paid) → `Workers/modal_a100.py`
+
+**UGC pipeline:** `Services/ugc/pipeline.py` → UGC content (Gemini) → avatar (Imagen/Veo) → DashScope I2V (primary) → Kaggle (fallback)
+
+**LoRA training:** `Workers/kaggle_setup.py` → `create_lora_training_notebook(product_name, T4 x2)` → Kaggle → `.safetensors` → GDrive
+
+**Kaggle deploy:** `python Workers/kaggle_deploy.py --task lora --product-name character`
 
 **Model cache:** `Services/gdrive/model_store.py` caches FLUX/Wan models in GDrive (5-30GB) to avoid redownloading.
 
