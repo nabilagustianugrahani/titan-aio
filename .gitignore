@@ -10,3 +10,4 @@ data/
 credentials/
 *.db
 .mypy_cache/
+__pycache__/

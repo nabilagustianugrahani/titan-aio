@@ -786,6 +786,172 @@ class KaggleNotebookGenerator:
             "nbformat_minor": 0
         }
 
+    def create_voice_cloning_notebook(
+        self,
+        speaker_name: str = "speaker",
+        language: str = "id",
+    ) -> dict:
+        """Create Coqui XTTS v2 voice cloning notebook for Kaggle T4 x2.
+
+        Upload 5-20 short audio clips → trains voice clone → saves .pth.
+
+        Usage:
+            gen = KaggleNotebookGenerator()
+            notebook = gen.create_voice_cloning_notebook("budi")
+            gen.save_notebook(notebook, "/tmp/voice_clone.ipynb")
+        """
+        cells = []
+
+        # Title
+        cells.append({
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                f"# TITAN AIO — Voice Cloning ({speaker_name})\n",
+                f"Coqui XTTS v2 on Kaggle T4 x2 (32GB VRAM)\n",
+                f"Language: {language}\n",
+                "\n",
+                "**Steps:**\n",
+                "1. Upload 5-20 short audio clips (.wav) to `/kaggle/input/audio/`\n",
+                "2. Run all cells\n",
+                "3. Download speaker `.pth` from `/kaggle/working/`\n",
+            ]
+        })
+
+        # Install deps
+        cells.append({
+            "cell_type": "code",
+            "metadata": {"accelerator": "GPU T4 x2"},
+            "source": [
+                "# Install Coqui TTS\n",
+                "!pip install -q TTS torch torchaudio\n",
+                "!pip install -q soundfile librosa\n",
+                "\n",
+                "import torch, os, glob, json\n",
+                "from pathlib import Path\n",
+                "\n",
+                "print(f'GPU: {torch.cuda.get_device_name(0)}')\n",
+                "print(f'VRAM: {torch.cuda.get_device_properties(0).total_mem / 1e9:.1f}GB')\n",
+            ],
+            "execution_count": None,
+            "outputs": []
+        })
+
+        # Find audio files
+        cells.append({
+            "cell_type": "code",
+            "metadata": {"accelerator": "GPU T4 x2"},
+            "source": [
+                "# Find audio files\n",
+                "AUDIO_DIR = '/kaggle/input/audio'\n",
+                "extensions = ['*.wav', '*.mp3', '*.m4a', '*.flac', '*.ogg']\n",
+                "audio_files = []\n",
+                "for ext in extensions:\n",
+                "    audio_files.extend(glob.glob(os.path.join(AUDIO_DIR, '**', ext), recursive=True))\n",
+                "\n",
+                "print(f'Found {len(audio_files)} audio files')\n",
+                "if len(audio_files) < 3:\n",
+                "    print('⚠️ Need at least 3-20 audio clips (5-30 seconds each)')\n",
+                "    print(f'Upload audio to: {AUDIO_DIR}')\n",
+                "else:\n",
+                "    for f in audio_files[:5]:\n",
+                "        print(f'  - {os.path.basename(f)}')\n",
+                "    if len(audio_files) > 5:\n",
+                "        print(f'  ... and {len(audio_files)-5} more')\n",
+                "\n",
+                "# Check sample rates\n",
+                "import librosa\n",
+                "for f in audio_files[:3]:\n",
+                "    y, sr = librosa.load(f, sr=None)\n",
+                "    dur = len(y) / sr\n",
+                "    print(f'  {os.path.basename(f)}: {dur:.1f}s @ {sr}Hz')\n",
+            ],
+            "execution_count": None,
+            "outputs": []
+        })
+
+        # Train voice clone
+        cells.append({
+            "cell_type": "code",
+            "metadata": {"accelerator": "GPU T4 x2"},
+            "source": [
+                "# Train XTTS v2 voice clone\n",
+                "from TTS.tts.configs.xtts_config import XttsConfig\n",
+                "from TTS.tts.models.xtts import Xtts\n",
+                "from TTS.utils.audio import AudioProcessor\n",
+                "\n",
+                "print('Loading Coqui XTTS v2...')\n",
+                "model = Xtts.init_from_config(XttsConfig())\n",
+                "model.load_checkpoint(\n",
+                "    config='',\n",
+                "    checkpoint_dir='/kaggle/working/xtts',\n",
+                "    eval=True,\n",
+                ")\n",
+                "model.cuda()\n",
+                "\n",
+                "# Fine-tune on speaker audio\n",
+                "print(f'Fine-tuning on {len(audio_files)} audio files...')\n",
+                "model.fine_tune(\n",
+                "    audio_files=audio_files,\n",
+                "    language='{language}',\n",
+                "    output_path=f'/kaggle/working/{speaker_name}.pth',\n",
+                "    num_epochs=50,\n",
+                "    batch_size=2,\n",
+                "    learning_rate=5e-5,\n",
+                ")\n",
+                "\n",
+                "print('✅ Voice clone trained!')\n",
+            ],
+            "execution_count": None,
+            "outputs": []
+        })
+
+        # Test inference
+        cells.append({
+            "cell_type": "code",
+            "metadata": {"accelerator": "GPU T4 x2"},
+            "source": [
+                "# Test cloned voice\n",
+                "print('Testing cloned voice...')\n",
+                "test_text = 'Halo, selamat datang di TITAN AIO! Produk ini recommended banget!'\n",
+                "\n",
+                "output = model.tts(\n",
+                "    text=test_text,\n",
+                "    speaker_audio_path=audio_files[0],\n",
+                "    language='{language}',\n",
+                ")\n",
+                "\n",
+                "import scipy.io.wavfile as wav\n",
+                "output_path = '/kaggle/working/test_output.wav'\n",
+                "wav.write(output_path, 24000, output)\n",
+                "\n",
+                "import IPython.display as ipd\n",
+                "ipd.display(ipd.Audio(output_path))\n",
+                "\n",
+                "print(f'✅ Test output: {output_path}')\n",
+                "print(f'\\nFiles ready:')\n",
+                "print(f'  1. /kaggle/working/{speaker_name}.pth (clone checkpoint)')\n",
+                "print(f'  2. {output_path} (test audio)')\n",
+            ],
+            "execution_count": None,
+            "outputs": []
+        })
+
+        return {
+            "cells": cells,
+            "metadata": {
+                "kaggle": {
+                    "accelerator": "GPU T4 x2",
+                    "dataSources": [],
+                    "isGpuEnabled": True,
+                    "isInternetEnabled": True,
+                    "language": "python"
+                }
+            },
+            "nbformat": 4,
+            "nbformat_minor": 0
+        }
+
     def save_notebook(self, notebook: dict, path: str):
         """Save notebook to .ipynb file."""
         with open(path, "w") as f:
