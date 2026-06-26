@@ -4,8 +4,10 @@ UGC Pipeline — End-to-end UGC video generation.
 Flow:
 1. UGCEngine → hooks, scripts, captions, video_prompts
 2. CharacterConsistency → avatar image (fixed seed)
-3. DashScope Wan 2.7 I2V → video (avatar as first frame)
-4. Assembly → final video + metadata
+3. VoiceCloner → voiceover audio for each script
+4. MusicGenerator → background music track
+5. DashScope Wan 2.7 I2V → video (avatar as first frame)
+6. SceneBuilder → compose final video (video + voiceover + text + music)
 
 Usage:
     from Services.ugc.pipeline import UGCPipeline
@@ -19,9 +21,11 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
@@ -36,6 +40,15 @@ class VideoOutput:
 
 
 @dataclass
+class AudioAsset:
+    """Generated audio (voiceover or music)."""
+    path: str
+    text: str = ""
+    type: str = "voiceover"  # voiceover, music
+    duration_sec: float = 0
+
+
+@dataclass
 class PipelineResult:
     """Complete UGC pipeline output."""
     videos: list[VideoOutput]
@@ -43,15 +56,18 @@ class PipelineResult:
     scripts: list[dict]
     captions: list[dict]
     avatar_path: str
-    product_title: str
-    category: str
-    profile_name: str
-    success: bool
+    voiceovers: list[AudioAsset] = field(default_factory=list)
+    background_music: Optional[AudioAsset] = None
+    composed_video_path: str = ""
+    product_title: str = ""
+    category: str = ""
+    profile_name: str = ""
+    success: bool = False
     error: str = ""
 
 
 class UGCPipeline:
-    """Orchestrate UGC content → avatar → video generation."""
+    """Orchestrate UGC content → avatar → voiceover → music → video → compose."""
 
     OUTPUT_DIR = Path("/tmp/titan-ugc-pipeline")
 
@@ -67,6 +83,9 @@ class UGCPipeline:
         platform: str = "tiktok",
         profile_name: str = "default",
         num_videos: int = 3,
+        with_music: bool = True,
+        with_voiceover: bool = True,
+        with_scene_composition: bool = True,
     ) -> PipelineResult:
         """Run full UGC pipeline.
 
@@ -78,12 +97,17 @@ class UGCPipeline:
             platform: Target platform
             profile_name: Consistency profile name
             num_videos: Number of video variants to generate
+            with_music: Generate background music
+            with_voiceover: Generate voiceover audio
+            with_scene_composition: Compose final video from all assets
 
         Returns:
-            PipelineResult with videos, hooks, scripts, captions
+            PipelineResult with videos, hooks, scripts, captions, audio, composed video
         """
-        print(f"\n🎬 UGC Pipeline: {product_title}")
+        print(f"\n{'='*50}")
+        print(f"🎬 UGC Pipeline: {product_title}")
         print(f"   Profile: {profile_name} | Videos: {num_videos}")
+        print(f"{'='*50}")
 
         # Step 1: Generate UGC content
         print("\n📝 Step 1: Generating UGC content...")
@@ -106,7 +130,6 @@ class UGCPipeline:
         from Services.ugc.character import CharacterConsistency
         char = CharacterConsistency()
 
-        # Get profile for avatar params
         avatar_gender = "female"
         avatar_age = "25-30"
         avatar_seed = ugc_result.character_seed or 42
@@ -135,11 +158,55 @@ class UGCPipeline:
         else:
             print(f"   ⚠️ Avatar failed: {avatar.error}, using placeholder")
 
-        # Step 3: Generate videos via DashScope I2V
-        print("\n🎬 Step 3: Generating videos...")
+        # Step 3: Generate voiceovers
+        voiceovers: list[AudioAsset] = []
+        if with_voiceover and ugc_result.scripts:
+            print("\n🗣️ Step 3: Generating voiceovers...")
+            from Services.voice.voice_cloner import VoiceCloner
+            cloner = VoiceCloner()
+
+            for i, script in enumerate(ugc_result.scripts[:num_videos]):
+                text = script.full_script or script.hook
+                if len(text) > 500:
+                    text = text[:500]
+                print(f"   🔊 Voiceover {i+1}: {len(text)} chars...")
+                result = await cloner.clone(
+                    text=text,
+                    language="id",
+                    gender=avatar_gender,
+                )
+                if result.success:
+                    voiceovers.append(AudioAsset(
+                        path=result.audio_path,
+                        text=text,
+                        type="voiceover",
+                    ))
+                    print(f"   ✅ Voiceover {i+1}: {result.audio_path}")
+                else:
+                    print(f"   ⚠️ Voiceover {i+1} failed: {result.error}")
+
+        # Step 4: Generate background music
+        bg_music: Optional[AudioAsset] = None
+        if with_music:
+            print("\n🎵 Step 4: Generating background music...")
+            music_prompt = self._music_prompt_for_category(category)
+            from Services.audio.music_generator import MusicGenerator
+            music_gen = MusicGenerator()
+            music_result = await music_gen.generate(prompt=music_prompt, duration=15)
+            if music_result.success:
+                bg_music = AudioAsset(
+                    path=music_result.audio_path,
+                    type="music",
+                    duration_sec=music_result.duration_sec,
+                )
+                print(f"   ✅ Background music: {music_result.audio_path}")
+            else:
+                print(f"   ⚠️ Music failed: {music_result.error}")
+
+        # Step 5: Generate videos via DashScope I2V
+        print("\n🎬 Step 5: Generating videos...")
         videos = []
 
-        # Use video prompts from UGC engine, fallback to scripts
         prompts = ugc_result.video_prompts[:num_videos]
         if not prompts and ugc_result.scripts:
             prompts = [s.full_script[:200] for s in ugc_result.scripts[:num_videos]]
@@ -161,15 +228,36 @@ class UGCPipeline:
             else:
                 print(f"   ❌ {label}: failed")
 
-        # Step 4: Assemble result
+        # Step 6: Compose final video (scene builder)
+        composed_video_path = ""
+        if with_scene_composition and any(v.video_path for v in videos):
+            print("\n🎬 Step 6: Composing final video...")
+            composed_video_path = await self._compose_video(
+                videos=videos,
+                voiceovers=voiceovers,
+                bg_music=bg_music,
+                scripts=ugc_result.scripts[:num_videos],
+            )
+
+        # Assemble result
         hooks_data = [{"text": h.text, "style": h.style, "ctr": h.predicted_ctr} for h in ugc_result.hooks]
-        scripts_data = [{"hook": s.hook, "full_script": s.full_script, "style": s.style, "duration": s.duration_seconds} for s in ugc_result.scripts]
-        captions_data = [{"text": c.text, "hashtags": c.hashtags, "platform": c.platform} for c in ugc_result.captions]
+        scripts_data = [
+            {"hook": s.hook, "full_script": s.full_script, "style": s.style, "duration": s.duration_seconds}
+            for s in ugc_result.scripts
+        ]
+        captions_data = [
+            {"text": c.text, "hashtags": c.hashtags, "platform": c.platform}
+            for c in ugc_result.captions
+        ]
 
         success = any(v.video_path for v in videos)
 
         print(f"\n{'='*50}")
-        print(f"📊 Pipeline complete: {sum(1 for v in videos if v.video_path)}/{len(videos)} videos generated")
+        print(f"📊 Pipeline complete:")
+        print(f"   Videos: {sum(1 for v in videos if v.video_path)}/{len(videos)}")
+        print(f"   Voiceovers: {len(voiceovers)}")
+        print(f"   Music: {'✅' if bg_music else '❌'}")
+        print(f"   Composed: {'✅' if composed_video_path else '❌'}")
         print(f"{'='*50}")
 
         return PipelineResult(
@@ -178,11 +266,74 @@ class UGCPipeline:
             scripts=scripts_data,
             captions=captions_data,
             avatar_path=avatar_path,
+            voiceovers=voiceovers,
+            background_music=bg_music,
+            composed_video_path=composed_video_path,
             product_title=product_title,
             category=category,
             profile_name=profile_name,
             success=success,
         )
+
+    def _music_prompt_for_category(self, category: str) -> str:
+        """Map product category to music description."""
+        prompts = {
+            "kecantikan": "upbeat electro-pop background music, fresh and feminine",
+            "elektronik": "modern electronic tech background music, futuristic",
+            "fashion": "trendy pop background music, stylish and energetic",
+            "makanan": "lively acoustic background music, warm and appetizing",
+            "otomotif": "intense epic background music, powerful and dynamic",
+            "kesehatan": "calm ambient background music, soothing and clean",
+            "umum": "upbeat corporate background music, positive and modern",
+        }
+        return prompts.get(category, prompts["umum"])
+
+    async def _compose_video(
+        self,
+        videos: list[VideoOutput],
+        voiceovers: list[AudioAsset],
+        bg_music: Optional[AudioAsset],
+        scripts: list,
+    ) -> str:
+        """Compose final video with scenes, voiceovers, text, and music."""
+        try:
+            from Services.ugc.scene_builder import SceneBuilder
+            builder = SceneBuilder()
+
+            for i, video in enumerate(videos):
+                if not video.video_path:
+                    continue
+
+                voiceover_path = voiceovers[i].path if i < len(voiceovers) else ""
+                script = scripts[i] if i < len(scripts) else None
+                text = script.full_script[:100] if script and script.full_script else ""
+
+                builder.add_scene(
+                    video_path=video.video_path,
+                    text_overlay=text,
+                    voiceover_path=voiceover_path,
+                    duration_sec=video.duration_sec,
+                )
+
+            order = list(builder.scenes.keys())
+            builder.arrange(order)
+
+            output_name = f"titan-ugc-{uuid.uuid4().hex[:8]}.mp4"
+            export_result = await builder.export(output_name)
+
+            if export_result.success:
+                return export_result.video_path
+            else:
+                print(f"   ⚠️ Scene export failed: {export_result.error}")
+
+        except Exception as e:
+            print(f"   ⚠️ Composition failed: {e}")
+
+        # Fallback: use first video directly
+        for v in videos:
+            if v.video_path:
+                return v.video_path
+        return ""
 
     async def _generate_video(
         self,
@@ -196,7 +347,7 @@ class UGCPipeline:
         Priority:
         1. DashScope Wan 2.7 I2V (primary)
         2. Google Veo (fallback)
-        3. Modal GPU (last resort)
+        3. HF Spaces T4 (free GPU, remote)
         """
         # 1. Try DashScope I2V
         if avatar_path:
@@ -225,7 +376,6 @@ class UGCPipeline:
     ) -> VideoOutput:
         """Try DashScope Wan 2.7 I2V (cloud, no GPU)."""
         try:
-            # Read avatar as base64 data URI
             import base64
             with open(avatar_path, "rb") as f:
                 img_bytes = f.read()
@@ -241,7 +391,6 @@ class UGCPipeline:
             )
 
             if video_url:
-                # Download video
                 import httpx
                 video_path = str(self.OUTPUT_DIR / f"{label}-{uuid.uuid4().hex[:8]}.mp4")
                 async with httpx.AsyncClient(timeout=60) as client:
@@ -291,6 +440,36 @@ class UGCPipeline:
 
         except Exception as e:
             print(f"    ⚠️ Veo failed: {e}")
+
+        return VideoOutput(
+            video_path="", video_url="", prompt=prompt,
+            source="none", duration_sec=duration, variant_label=label,
+        )
+
+    async def _try_hf_spaces(
+        self, avatar_path: str, prompt: str, duration: int, label: str
+    ) -> VideoOutput:
+        """Try HuggingFace Spaces with T4 GPU."""
+        try:
+            import httpx
+            space_url = "https://api-inference.huggingface.co/models/ByteDance/AnimateDiff-Lightning"
+            token = os.environ.get("HF_TOKEN", "")
+
+            async with httpx.AsyncClient(timeout=120) as client:
+                headers = {"Authorization": f"Bearer {token}"} if token else {}
+                payload = {"inputs": prompt}
+                resp = await client.post(space_url, headers=headers, json=payload)
+                if resp.status_code == 200:
+                    video_path = str(self.OUTPUT_DIR / f"{label}-hfs-{uuid.uuid4().hex[:8]}.mp4")
+                    with open(video_path, "wb") as f:
+                        f.write(resp.content)
+                    return VideoOutput(
+                        video_path=video_path, video_url="",
+                        prompt=prompt, source="hf_spaces",
+                        duration_sec=duration, variant_label=label,
+                    )
+        except Exception as e:
+            print(f"    ⚠️ HF Spaces failed: {e}")
 
         return VideoOutput(
             video_path="", video_url="", prompt=prompt,
