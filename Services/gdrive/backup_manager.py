@@ -1,11 +1,12 @@
 """Backup/restore — persists SQLite DB + ChromaDB across HF Space rebuilds.
 
-Stores snapshots directly in the HF Space repo (using HF_TOKEN).
-No GDrive service account needed.
+Strategy:
+  1. Try GDrive (supportsAllDrives for Shared Drive support)
+  2. Fallback to HF Space repo if GDrive fails (service account quota)
 
 Flow:
-  restore()  → on startup  → download latest snapshot from HF repo
-  backup()   → on shutdown → commit snapshot to HF repo
+  restore()  → on startup  → download & restore latest snapshot
+  backup()   → on shutdown → create & upload snapshot
 """
 
 from __future__ import annotations
@@ -43,11 +44,10 @@ def _create_snapshot() -> Optional[Path]:
     try:
         for path in SNAPSHOT_PATHS:
             src = root / path
-            if src.is_file():
+            if src.is_file() and src.exists():
                 (snapshot_dir / src.name).write_bytes(src.read_bytes())
             elif src.is_dir() and src.exists():
-                dst = snapshot_dir / src.name
-                shutil.copytree(src, dst, dirs_exist_ok=True)
+                shutil.copytree(src, snapshot_dir / src.name, dirs_exist_ok=True)
 
         tar_path = tmp_dir / BACKUP_TAR_NAME
         with tarfile.open(tar_path, "w:gz") as tar:
@@ -84,17 +84,84 @@ def _extract_snapshot(tar_path: Path) -> bool:
         return False
 
 
-# ── HF Repo Backup ────────────────────────────────────────────────
+# ── GDrive (primary) ──────────────────────────────────────────────
+
+GDRIVE_FOLDER_ID = "1GutEsjwj1I82B50usf-i-zH5zpVqONq6"
+GDRIVE_FILE_NAME = BACKUP_TAR_NAME
+
+
+def _upload_to_gdrive(tar_path: Path) -> bool:
+    """Upload snapshot to Google Drive. Returns True on success."""
+    creds_file = Path(settings.GDRIVE_CREDENTIALS_FILE)
+    if not creds_file.exists():
+        return False
+
+    try:
+        from Services.gdrive.client import GoogleDriveClient
+
+        client = GoogleDriveClient.get_instance()
+        # Override folder ID to the one shared with service account
+        client._folder_id = GDRIVE_FOLDER_ID
+
+        result = client.upload_file(
+            file_path=str(tar_path),
+            mime_type="application/gzip",
+            target_name=GDRIVE_FILE_NAME,
+        )
+        print(f"[backup] Uploaded to GDrive: {result.get('url', '?')}")
+        return True
+    except Exception as e:
+        err = str(e)
+        if "storageQuotaExceeded" in err or "quota" in err.lower():
+            print("[backup] GDrive quota exceeded, will fallback to HF repo")
+        else:
+            print(f"[backup] GDrive upload error: {e}", file=__import__("sys").stderr)
+        return False
+
+
+def _download_from_gdrive() -> Optional[bytes]:
+    """Download latest snapshot from Google Drive."""
+    creds_file = Path(settings.GDRIVE_CREDENTIALS_FILE)
+    if not creds_file.exists():
+        return None
+
+    try:
+        from Services.gdrive.client import GoogleDriveClient
+
+        client = GoogleDriveClient.get_instance()
+        client._folder_id = GDRIVE_FOLDER_ID
+
+        files = client.list_files(page_size=10)
+        backup_files = [f for f in files if f.get("name") == GDRIVE_FILE_NAME]
+        if not backup_files:
+            return None
+
+        # Sort by createdTime descending
+        backup_files.sort(key=lambda f: f.get("createdTime", ""), reverse=True)
+        latest = backup_files[0]
+
+        local_path = f"/tmp/{BACKUP_TAR_NAME}"
+        if not client.download_file(latest["id"], local_path):
+            return None
+
+        data = Path(local_path).read_bytes()
+        Path(local_path).unlink(missing_ok=True)
+        return data
+    except Exception as e:
+        print(f"[backup] GDrive download error: {e}", file=__import__("sys").stderr)
+        return None
+
+
+# ── HF Repo (fallback) ────────────────────────────────────────────
 
 SPACE_ID = "Badjals/TitanAIO"
 BACKUP_REPO_PATH = "backups/titan_snapshot.tar.gz"
 
 
 def _upload_to_hf(data: bytes) -> bool:
-    """Upload snapshot to HF Space repo using Hub API."""
+    """Upload snapshot to HF Space repo."""
     token = _get_hf_token()
     if not token:
-        print("[backup] No HF_TOKEN set")
         return False
 
     try:
@@ -108,7 +175,7 @@ def _upload_to_hf(data: bytes) -> bool:
             repo_type="space",
             commit_message="chore: auto-backup data snapshot",
         )
-        print("[backup] Uploaded snapshot to HF repo")
+        print("[backup] Uploaded to HF repo")
         return True
     except Exception as e:
         print(f"[backup] HF upload error: {e}", file=__import__("sys").stderr)
@@ -125,12 +192,12 @@ def _download_from_hf() -> Optional[bytes]:
         from huggingface_hub import HfApi
 
         api = HfApi(token=token)
-        data = api.hf_hub_download(
+        path = api.hf_hub_download(
             repo_id=SPACE_ID,
             repo_type="space",
             filename=BACKUP_REPO_PATH,
         )
-        with open(data, "rb") as f:
+        with open(path, "rb") as f:
             return f.read()
     except Exception:
         return None
@@ -140,13 +207,16 @@ def _download_from_hf() -> Optional[bytes]:
 
 
 def restore() -> bool:
-    """Download and restore latest snapshot from HF Space repo.
+    """Restore data — tries GDrive first, then HF repo."""
+    data = _download_from_gdrive()
+    source = "GDrive"
 
-    Called on app startup. Silently no-ops if no backup exists yet.
-    """
-    data = _download_from_hf()
     if data is None:
-        print("[backup] No backup found in HF repo, skipping restore")
+        data = _download_from_hf()
+        source = "HF repo"
+
+    if data is None:
+        print("[backup] No backup found, skipping restore")
         return False
 
     tmp_path = Path(f"/tmp/{BACKUP_TAR_NAME}")
@@ -154,7 +224,7 @@ def restore() -> bool:
         tmp_path.write_bytes(data)
         result = _extract_snapshot(tmp_path)
         if result:
-            print("[backup] Restored from HF repo")
+            print(f"[backup] Restored from {source}")
         return result
     finally:
         if tmp_path.exists():
@@ -162,18 +232,21 @@ def restore() -> bool:
 
 
 def backup() -> bool:
-    """Create a snapshot and upload it to HF Space repo.
-
-    Called on app shutdown and periodically.
-    """
+    """Backup data — tries GDrive first, falls back to HF repo."""
     tar_path = _create_snapshot()
     if tar_path is None:
         return False
 
     try:
         data = tar_path.read_bytes()
-        result = _upload_to_hf(data)
-        return result
+
+        # Try GDrive first
+        if _upload_to_gdrive(tar_path):
+            return True
+
+        # Fallback to HF repo
+        print("[backup] Falling back to HF repo...")
+        return _upload_to_hf(data)
     finally:
         tar_path.unlink(missing_ok=True)
 
