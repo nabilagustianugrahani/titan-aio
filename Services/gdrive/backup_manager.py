@@ -1,25 +1,20 @@
-"""Google Drive backup/restore — persists SQLite DB + ChromaDB across HF Space rebuilds.
+"""Backup/restore — persists SQLite DB + ChromaDB across HF Space rebuilds.
+
+Stores snapshots directly in the HF Space repo (using HF_TOKEN).
+No GDrive service account needed.
 
 Flow:
-  restore_from_drive()  → on startup  → pull latest snapshot from GDrive
-  backup_to_drive()     → on shutdown → push snapshot to GDrive
-  periodic_backup()     → every N min → push snapshot (background)
-
-Env vars:
-  GDRIVE_CREDENTIALS_BASE64 — base64-encoded service account JSON (set in HF Space secrets)
-  GDRIVE_FOLDER_ID          — GDrive folder for backups
+  restore()  → on startup  → download latest snapshot from HF repo
+  backup()   → on shutdown → commit snapshot to HF repo
 """
 
 from __future__ import annotations
 
-import base64
-import json
 import os
 import shutil
 import tarfile
 import tempfile
 import time
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -27,39 +22,15 @@ from titan.config import settings
 
 BACKUP_DIR_NAME = "titan_snapshot"
 BACKUP_TAR_NAME = "titan_snapshot.tar.gz"
-
-# Files/dirs to include in the snapshot
-SNAPSHOT_PATHS = [
-    "data/titan.db",
-    "data/chroma/",
-]
-
-
-def _ensure_credentials() -> bool:
-    """Write GDrive credentials from env var if file doesn't exist yet.
-
-    On HF Space, the service account JSON is injected via
-    GDRIVE_CREDENTIALS_BASE64 env var (set in Space secrets).
-    """
-    creds_path = Path(settings.GDRIVE_CREDENTIALS_FILE)
-    if creds_path.exists():
-        return True
-
-    b64 = os.environ.get("GDRIVE_CREDENTIALS_BASE64", "")
-    if not b64:
-        return False
-
-    try:
-        creds_path.parent.mkdir(parents=True, exist_ok=True)
-        decoded = base64.b64decode(b64)
-        creds_path.write_bytes(decoded)
-        return True
-    except Exception:
-        return False
+SNAPSHOT_PATHS = ["data/titan.db", "data/chroma/"]
 
 
 def _get_project_root() -> Path:
-    return Path(__file__).resolve().parent.parent.parent  # Services/gdrive/ -> project root
+    return Path(__file__).resolve().parent.parent.parent
+
+
+def _get_hf_token() -> str:
+    return os.environ.get("HF_TOKEN") or settings.HF_TOKEN or ""
 
 
 def _create_snapshot() -> Optional[Path]:
@@ -74,7 +45,7 @@ def _create_snapshot() -> Optional[Path]:
             src = root / path
             if src.is_file():
                 (snapshot_dir / src.name).write_bytes(src.read_bytes())
-            elif src.is_dir():
+            elif src.is_dir() and src.exists():
                 dst = snapshot_dir / src.name
                 shutil.copytree(src, dst, dirs_exist_ok=True)
 
@@ -84,7 +55,7 @@ def _create_snapshot() -> Optional[Path]:
 
         return tar_path
     except Exception as e:
-        print(f"[backup] Snapshot creation failed: {e}", file=__import__("sys").stderr)
+        print(f"[backup] Snapshot failed: {e}", file=__import__("sys").stderr)
         return None
     finally:
         shutil.rmtree(snapshot_dir, ignore_errors=True)
@@ -96,7 +67,6 @@ def _extract_snapshot(tar_path: Path) -> bool:
     try:
         with tarfile.open(tar_path, "r:gz") as tar:
             tar.extractall(path=root)
-        # Move contents from titan_snapshot/ up one level
         extracted = root / BACKUP_DIR_NAME
         if extracted.is_dir():
             for item in extracted.iterdir():
@@ -110,86 +80,109 @@ def _extract_snapshot(tar_path: Path) -> bool:
             shutil.rmtree(extracted, ignore_errors=True)
         return True
     except Exception as e:
-        print(f"[backup] Snapshot extraction failed: {e}", file=__import__("sys").stderr)
+        print(f"[backup] Extraction failed: {e}", file=__import__("sys").stderr)
         return False
 
 
-def restore_from_drive() -> bool:
-    """Download and restore the latest snapshot from Google Drive.
+# ── HF Repo Backup ────────────────────────────────────────────────
 
-    Called on app startup. Silently no-ops if:
-    - GDrive credentials aren't configured
-    - No backup file exists in Drive yet
-    """
-    if not _ensure_credentials():
+SPACE_ID = "Badjals/TitanAIO"
+BACKUP_REPO_PATH = "backups/titan_snapshot.tar.gz"
+
+
+def _upload_to_hf(data: bytes) -> bool:
+    """Upload snapshot to HF Space repo using Hub API."""
+    token = _get_hf_token()
+    if not token:
+        print("[backup] No HF_TOKEN set")
         return False
 
     try:
-        from Services.gdrive.client import GoogleDriveClient
+        from huggingface_hub import HfApi
 
-        client = GoogleDriveClient.get_instance()
-        files = client.list_files(page_size=10)
-
-        # Find the latest backup file
-        backup_files = [f for f in files if f.get("name") == BACKUP_TAR_NAME]
-        if not backup_files:
-            print("[backup] No backup found in GDrive, skipping restore")
-            return False
-
-        # Sort by createdTime descending, take latest
-        backup_files.sort(key=lambda f: f.get("createdTime", ""), reverse=True)
-        latest = backup_files[0]
-        file_id = latest["id"]
-
-        local_path = f"/tmp/{BACKUP_TAR_NAME}"
-        success = client.download_file(file_id, local_path)
-        if not success:
-            print("[backup] Download failed")
-            return False
-
-        result = _extract_snapshot(Path(local_path))
-        if result:
-            print(f"[backup] Restored from GDrive snapshot ({latest.get('createdTime', '?')})")
-        return result
+        api = HfApi(token=token)
+        api.upload_file(
+            path_or_fileobj=data,
+            path_in_repo=BACKUP_REPO_PATH,
+            repo_id=SPACE_ID,
+            repo_type="space",
+            commit_message="chore: auto-backup data snapshot",
+        )
+        print("[backup] Uploaded snapshot to HF repo")
+        return True
     except Exception as e:
-        print(f"[backup] Restore error: {e}", file=__import__("sys").stderr)
+        print(f"[backup] HF upload error: {e}", file=__import__("sys").stderr)
         return False
 
 
-def backup_to_drive() -> bool:
-    """Create a snapshot and upload it to Google Drive.
+def _download_from_hf() -> Optional[bytes]:
+    """Download latest snapshot from HF Space repo."""
+    token = _get_hf_token()
+    if not token:
+        return None
+
+    try:
+        from huggingface_hub import HfApi
+
+        api = HfApi(token=token)
+        data = api.hf_hub_download(
+            repo_id=SPACE_ID,
+            repo_type="space",
+            filename=BACKUP_REPO_PATH,
+        )
+        with open(data, "rb") as f:
+            return f.read()
+    except Exception:
+        return None
+
+
+# ── Public API ────────────────────────────────────────────────────
+
+
+def restore() -> bool:
+    """Download and restore latest snapshot from HF Space repo.
+
+    Called on app startup. Silently no-ops if no backup exists yet.
+    """
+    data = _download_from_hf()
+    if data is None:
+        print("[backup] No backup found in HF repo, skipping restore")
+        return False
+
+    tmp_path = Path(f"/tmp/{BACKUP_TAR_NAME}")
+    try:
+        tmp_path.write_bytes(data)
+        result = _extract_snapshot(tmp_path)
+        if result:
+            print("[backup] Restored from HF repo")
+        return result
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+
+def backup() -> bool:
+    """Create a snapshot and upload it to HF Space repo.
 
     Called on app shutdown and periodically.
     """
-    if not _ensure_credentials():
+    tar_path = _create_snapshot()
+    if tar_path is None:
         return False
 
     try:
-        from Services.gdrive.client import GoogleDriveClient
-
-        tar_path = _create_snapshot()
-        if tar_path is None:
-            return False
-
-        client = GoogleDriveClient.get_instance()
-        result = client.upload_file(
-            file_path=str(tar_path),
-            mime_type="application/gzip",
-            target_name=BACKUP_TAR_NAME,
-        )
-        os.unlink(tar_path)
-        print(f"[backup] Uploaded backup to GDrive: {result.get('url', '?')}")
-        return True
-    except Exception as e:
-        print(f"[backup] Upload error: {e}", file=__import__("sys").stderr)
-        return False
+        data = tar_path.read_bytes()
+        result = _upload_to_hf(data)
+        return result
+    finally:
+        tar_path.unlink(missing_ok=True)
 
 
 def periodic_backup(interval_minutes: int = 15) -> None:
-    """Run backup in a loop (intended for a background thread/async task)."""
+    """Run backup in a loop (background thread)."""
     while True:
         time.sleep(interval_minutes * 60)
         try:
-            backup_to_drive()
+            backup()
         except Exception:
             pass

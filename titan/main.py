@@ -69,8 +69,8 @@ async def startup():
     await init_db()
     # Restore DB + ChromaDB from GDrive (if credentials configured)
     try:
-        from Services.gdrive.backup_manager import restore_from_drive
-        restored = restore_from_drive()
+        from Services.gdrive.backup_manager import restore
+        restored = restore()
         if restored:
             print("[startup] Data restored from Google Drive")
             # Re-init DB in case we restored a different version
@@ -82,8 +82,8 @@ async def startup():
 async def shutdown():
     # Backup DB + ChromaDB to GDrive before shutdown
     try:
-        from Services.gdrive.backup_manager import backup_to_drive
-        backup_to_drive()
+        from Services.gdrive.backup_manager import backup
+        backup()
     except Exception:
         pass
     await close_db()
