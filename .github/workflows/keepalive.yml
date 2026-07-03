@@ -1,0 +1,22 @@
+name: Keep Alive
+
+on:
+  schedule:
+    # Every 5 minutes — keeps HF Space from sleeping
+    - cron: '*/5 * * * *'
+  workflow_dispatch:  # manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping HF Space keepalive endpoint
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            "https://badjals-titanaio.hf.space/keepalive" \
+            || echo "Ping failed (maybe sleeping)"
+
+      - name: Also ping health endpoint
+        run: |
+          STATUS=$(curl -s -m 10 "https://badjals-titanaio.hf.space/health" 2>&1)
+          echo "Health: $STATUS"

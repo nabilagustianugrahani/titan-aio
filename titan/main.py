@@ -6,6 +6,9 @@ import os
 import sys
 from pathlib import Path
 
+# Fix protobuf for ChromaDB (must be set before any imports)
+os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
+
 # Silence noisy loggers before any imports
 import logging
 logging.basicConfig(level=logging.CRITICAL, stream=sys.stderr, force=True)
@@ -42,12 +45,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 app = FastAPI(title=settings.APP_NAME, version="0.1.0")
 
-# Telegram bot singleton
-_tg_bot = None
-
-def get_telegram_bot():
-    return _tg_bot
-
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 # Mount MCP HTTP transport at /mcp
@@ -69,40 +66,26 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 @app.on_event("startup")
 async def startup():
-    global _tg_bot
     await init_db()
-
-    # Initialize Telegram bot if token is configured
-    if settings.TELEGRAM_BOT_TOKEN:
-        import asyncio
-        import httpx
-        from Services.notifications.telegram_bot import TelegramBot
-        _tg_bot = TelegramBot()
-        await _tg_bot.configure(
-            bot_token=settings.TELEGRAM_BOT_TOKEN,
-            chat_ids=[],
-        )
-        _tg_bot.subscribe_to_bus()
-        print(f"[telegram] Bot initialized, token={settings.TELEGRAM_BOT_TOKEN[:10]}...")
-
-        # Always remove webhook + use polling (webhook causes conflicts)
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as c:
-                await c.get(f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/deleteWebhook?drop_pending_updates=true")
-        except Exception:
-            pass
-        asyncio.create_task(_tg_bot.start_polling())
-        print("[telegram] Polling mode started")
+    # Restore DB + ChromaDB from GDrive (if credentials configured)
+    try:
+        from Services.gdrive.backup_manager import restore_from_drive
+        restored = restore_from_drive()
+        if restored:
+            print("[startup] Data restored from Google Drive")
+            # Re-init DB in case we restored a different version
+            await init_db()
+    except Exception:
+        pass  # GDrive restore is optional
 
 @app.on_event("shutdown")
 async def shutdown():
-    global _tg_bot
-    if _tg_bot:
-        try:
-            _tg_bot.stop_polling()
-            await _tg_bot.close()
-        except Exception:
-            pass
+    # Backup DB + ChromaDB to GDrive before shutdown
+    try:
+        from Services.gdrive.backup_manager import backup_to_drive
+        backup_to_drive()
+    except Exception:
+        pass
     await close_db()
 
 
@@ -137,51 +120,7 @@ async def telegram_webhook(request: Request):
             return JSONResponse({"error": "unauthorized"}, status_code=403)
 
     body = await request.json()
-
-    # Extract message (skip non-message updates)
-    message = body.get("message") or body.get("edited_message")
-    if not message:
-        return {"ok": True}
-
-    chat_id = str(message.get("chat", {}).get("id", ""))
-    text = message.get("text", "")
-
-    # Only handle commands
-    if not text.startswith("/"):
-        return {"ok": True}
-
-    # Parse command (strip /prefix and @botname)
-    parts = text.split(maxsplit=1)
-    command = parts[0].lstrip("/").split("@")[0].lower()
-    args = parts[1] if len(parts) > 1 else ""
-
-    # Dispatch to bot
-    bot = _tg_bot
-    if bot is None:
-        from Services.notifications.telegram_bot import TelegramBot
-        bot = TelegramBot()
-        if settings.TELEGRAM_BOT_TOKEN:
-            await bot.configure(bot_token=settings.TELEGRAM_BOT_TOKEN)
-
-    response_text = await bot.handle_command(command=command, chat_id=chat_id, args=args)
-
-    # Send response back
-    if chat_id:
-        await bot.send_message(chat_id=chat_id, text=response_text)
-
-    return {"ok": True}
-
-
-@app.get("/webhook/status")
-async def webhook_status():
-    """Check Telegram webhook status."""
-    if not _tg_bot or not settings.TELEGRAM_BOT_TOKEN:
-        return {"configured": False, "reason": "bot not initialized"}
-    try:
-        info = await _tg_bot.get_webhook_info()
-        return {"configured": True, "info": info.get("result", {})}
-    except Exception as e:
-        return {"configured": False, "error": str(e)}
+    return {"ok": True, "message": "webhook received"}
 
 
 @app.get("/dashboard", response_class=HTMLResponse)

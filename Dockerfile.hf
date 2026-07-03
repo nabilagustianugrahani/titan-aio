@@ -28,6 +28,8 @@ RUN mkdir -p data/credentials
 ENV PORT=7860
 ENV HOST=0.0.0.0
 ENV PYTHONUNBUFFERED=1
+# Fix protobuf/ChromaDB compatibility
+ENV PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 
 EXPOSE 7860
 
