@@ -1,0 +1,127 @@
+# TITAN AIO — Agent Definitions
+# YAML-defined agents, inspected dynamically by AgentLoader
+# Pattern inspired by Omnigent meta-harness
+
+agents:
+  product:
+    class: Services.agents.product.ProductAgent
+    description: Analyze product URL for affiliate potential
+    model: default
+    tools:
+      - search_product
+      - analyze_product
+    timeout: 60
+    retries: 2
+
+  review:
+    class: Services.agents.review.ReviewAgent
+    description: Analyze product reviews for pain points and sentiment
+    model: default
+    tools:
+      - analyze_reviews
+    timeout: 60
+    retries: 2
+
+  offer:
+    class: Services.agents.offer.OfferAgent
+    description: Generate offer strategy from product + reviews + competitors
+    model: default
+    tools:
+      - generate_offer
+    timeout: 60
+    retries: 2
+
+  content:
+    class: Services.agents.content.ContentAgent
+    description: Generate hooks, scripts, and content variations
+    model: default
+    tools:
+      - generate_hooks
+      - generate_script
+    timeout: 90
+    retries: 2
+
+  ugc:
+    class: Services.ugc.engine.UGCEngine
+    description: AI-powered UGC content generation
+    model: gemini
+    tools: []
+    timeout: 120
+    retries: 1
+
+  video:
+    class: Services.agents.video.VideoAgent
+    description: Generate product videos via cloud APIs
+    model: default
+    tools:
+      - generate_video
+      - generate_thumbnail
+    fallback: google_flow
+    timeout: 180
+    retries: 3
+
+  avatar:
+    class: Services.agents.avatar.AvatarAgent
+    description: Generate AI spokesperson avatar
+    model: default
+    tools:
+      - generate_avatar
+    timeout: 120
+    retries: 2
+
+  competitor:
+    class: Services.agents.competitor.CompetitorAgent
+    description: Analyze competitor strategies and content gaps
+    model: default
+    tools:
+      - analyze_competitors
+    timeout: 60
+    retries: 2
+
+  publisher:
+    class: Services.publisher.auto_upload.AutoUploader
+    description: Auto-upload content to social platforms
+    model: none
+    tools: []
+    timeout: 300
+    retries: 2
+
+  finance:
+    class: Services.agents.finance.FinanceAgent
+    description: Campaign financial analysis and ROI tracking
+    model: default
+    tools:
+      - get_metrics
+      - forecast_revenue
+    timeout: 60
+    retries: 1
+
+  trend:
+    class: Services.agents.trend_monitor.TrendMonitor
+    description: Real-time trend monitoring and analysis
+    model: default
+    tools:
+      - monitor_trends
+    timeout: 60
+    retries: 2
+
+memory:
+  vector_store:
+    path: Services.memory.vector_store.VectorStore
+    collections:
+      - winning_hooks
+      - winning_products
+      - knowledge
+
+pipeline:
+  phases:
+    - name: analyze
+      agents: [product, review, competitor, offer]
+      parallel: [review, competitor]
+    - name: content
+      agents: [content, ugc]
+    - name: media
+      agents: [video, avatar]
+      parallel: true
+    - name: publish
+      agents: [publisher]

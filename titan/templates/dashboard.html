@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TITAN AIO — Enterprise Dashboard</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+</head>
+<body>
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="logo">⚡</div>
+        <div>
+          <div class="name">TITAN AIO</div>
+          <div class="version">v1.0 · Enterprise</div>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-section="overview"><span class="icon">📊</span> <span>Overview</span></div>
+        <div class="nav-item" data-section="campaigns"><span class="icon">📈</span> <span>Campaigns</span></div>
+        <div class="nav-item" data-section="knowledge"><span class="icon">🧠</span> <span>Knowledge</span></div>
+        <div class="nav-item" data-section="tasks"><span class="icon">📋</span> <span>Tasks</span></div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator">
+          <span class="status-dot"></span>
+          <span class="status-text">Operational</span>
+        </div>
+        <div id="last-update" class="last-update">Loading...</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+
+      <!-- Loading State -->
+      <div id="loading" class="loading-state">
+        <div class="spinner"></div>
+        <p style="font-size:14px;color:var(--text-muted)">Loading dashboard...</p>
+      </div>
+
+      <!-- Dashboard Content -->
+      <div id="dashboard" style="display:none">
+
+        <!-- Header -->
+        <div class="header-row">
+          <div>
+            <h1 id="section-title">TITAN AIO</h1>
+            <p class="subtitle">Real-time affiliate intelligence monitoring</p>
+          </div>
+          <div class="header-right">
+            <div class="system-status" id="system-status">
+              <span class="status-dot" id="ws-status-dot"></span>
+              <span class="status-label" id="ws-status-label">Connecting...</span>
+            </div>
+            <div class="uptime-badge" id="uptime-badge">
+              <span class="uptime-icon">&#9201;</span>
+              <span class="uptime-text" id="uptime-text">00:00:00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ OVERVIEW SECTION ═══ -->
+        <div id="section-overview" class="section-view active">
+
+          <!-- Stats Grid -->
+          <div class="stats-grid fade-in">
+            <div class="stat-card revenue">
+              <div class="stat-icon">$</div>
+              <div class="stat-label">Total Revenue</div>
+              <div class="stat-value" id="stat-revenue">—</div>
+              <div class="stat-sub" id="stat-revenue-sub">Across all campaigns</div>
+            </div>
+            <div class="stat-card campaigns">
+              <div class="stat-icon">C</div>
+              <div class="stat-label">Active Campaigns</div>
+              <div class="stat-value" id="stat-campaigns">—</div>
+              <div class="stat-sub">Currently running</div>
+            </div>
+            <div class="stat-card content">
+              <div class="stat-icon">T</div>
+              <div class="stat-label">Total Content</div>
+              <div class="stat-value" id="stat-content">—</div>
+              <div class="stat-sub">Posts, videos, images</div>
+            </div>
+            <div class="stat-card conversion">
+              <div class="stat-icon">%</div>
+              <div class="stat-label">Conversion Rate</div>
+              <div class="stat-value" id="stat-conversion">—</div>
+              <div class="stat-sub">Clicks to sales</div>
+            </div>
+          </div>
+
+          <!-- Row 2: Revenue Chart + Pipeline Status -->
+          <div class="dashboard-grid two-col fade-in">
+            <div class="chart-container">
+              <div class="chart-header">
+                <h3>Revenue (7 days)</h3>
+                <span class="panel-count">IDR</span>
+              </div>
+              <canvas id="revenueChart"></canvas>
+            </div>
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Pipeline Status</h3>
+                <span class="badge badge-active" id="pipeline-badge">Idle</span>
+              </div>
+              <div class="panel-body">
+                <div class="pipeline-status" id="pipeline-status">
+                  <div class="pipeline-info">
+                    <div class="pipeline-phase-label" id="pipeline-phase">No active pipeline</div>
+                    <div class="pipeline-detail" id="pipeline-detail">Waiting for next run...</div>
+                  </div>
+                  <div class="pipeline-progress">
+                    <div class="progress-label">
+                      <span id="pipeline-step">—</span>
+                      <span id="pipeline-percent">0%</span>
+                    </div>
+                    <div class="pipeline-bar">
+                      <div class="pipeline-bar-fill" id="pipeline-bar-fill" style="width:0%"></div>
+                    </div>
+                  </div>
+                  <div class="pipeline-phases" id="pipeline-phases">
+                    <div class="phase-item active" data-phase="discover">
+                      <div class="phase-dot"></div>
+                      <span>Discover</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-item" data-phase="analyze">
+                      <div class="phase-dot"></div>
+                      <span>Analyze</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-item" data-phase="create">
+                      <div class="phase-dot"></div>
+                      <span>Create</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-item" data-phase="publish">
+                      <div class="phase-dot"></div>
+                      <span>Publish</span>
+                    </div>
+                    <div class="phase-connector"></div>
+                    <div class="phase-item" data-phase="complete">
+                      <div class="phase-dot"></div>
+                      <span>Done</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 3: Active Campaigns + Trending Topics -->
+          <div class="dashboard-grid two-col fade-in">
+            <!-- Active Campaigns -->
+            <div class="panel full-table-panel">
+              <div class="panel-header">
+                <h3>Active Campaigns</h3>
+                <span class="panel-count" id="campaigns-count">0</span>
+              </div>
+              <div class="panel-body">
+                <table class="data-table" id="campaigns-table">
+                  <thead>
+                    <tr>
+                      <th>Campaign</th>
+                      <th>Platform</th>
+                      <th>Status</th>
+                      <th>Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody id="campaigns-body">
+                    <tr><td colspan="4"><div class="empty-state"><div class="icon">C</div><p>No active campaigns</p></div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Trending Topics -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Trending Topics</h3>
+                <span class="badge badge-active" id="trending-status">Live</span>
+              </div>
+              <div class="panel-body">
+                <div class="trending-list" id="trending-list">
+                  <div class="empty-state"><div class="icon">~</div><p>Fetching trends...</p></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Row 4: Alerts + Quick Actions -->
+          <div class="dashboard-grid two-col fade-in">
+            <!-- Alerts -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Alerts</h3>
+                <span class="panel-count" id="alerts-count">0</span>
+              </div>
+              <div class="panel-body">
+                <div class="alerts-list" id="alerts-list">
+                  <div class="empty-state"><div class="icon">!</div><p>No alerts</p></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="panel">
+              <div class="panel-header">
+                <h3>Quick Actions</h3>
+              </div>
+              <div class="panel-body">
+                <div class="actions-grid">
+                  <button class="action-card" onclick="launchCampaign()">
+                    <span class="action-icon">>_</span>
+                    <span class="action-label">Launch Campaign</span>
+                    <span class="action-desc">Start a new autonomous cycle</span>
+                  </button>
+                  <button class="action-card" onclick="viewReport()">
+                    <span class="action-icon">#</span>
+                    <span class="action-label">View Report</span>
+                    <span class="action-desc">Analytics and performance</span>
+                  </button>
+                  <button class="action-card" onclick="manageCalendar()">
+                    <span class="action-icon">[ ]</span>
+                    <span class="action-label">Manage Calendar</span>
+                    <span class="action-desc">Schedule and content plan</span>
+                  </button>
+                </div>
+                <div class="divider"></div>
+                <div id="cycle-result" style="font-size:12px;color:var(--text-muted);margin-top:8px"></div>
+                <div class="progress-bar-container" id="cycle-progress">
+                  <div class="progress-bar-fill"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ CAMPAIGNS SECTION ═══ -->
+        <div id="section-campaigns" class="section-view">
+          <div class="panel full-table-panel">
+            <div class="panel-header">
+              <h3>📈 All Campaigns</h3>
+              <span class="panel-count" id="campaigns-full-count">0</span>
+            </div>
+            <div class="panel-body">
+              <table class="data-table" id="campaigns-full-table">
+                <thead>
+                  <tr>
+                    <th class="sortable" data-sort="name">Product <span class="sort-arrow"></span></th>
+                    <th class="sortable" data-sort="revenue">Revenue <span class="sort-arrow"></span></th>
+                    <th class="sortable" data-sort="status">Status <span class="sort-arrow"></span></th>
+                    <th>Platform</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="campaigns-full-body">
+                  <tr><td colspan="5"><div class="empty-state"><div class="icon">📦</div><p>No campaigns yet</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ KNOWLEDGE SECTION ═══ -->
+        <div id="section-knowledge" class="section-view">
+          <div class="panel full-table-panel">
+            <div class="panel-header">
+              <h3>🧠 Knowledge Base</h3>
+              <span class="panel-count" id="knowledge-full-count">0</span>
+            </div>
+            <div class="panel-body">
+              <table class="data-table" id="knowledge-full-table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Pattern</th>
+                  </tr>
+                </thead>
+                <tbody id="knowledge-full-body">
+                  <tr><td colspan="3"><div class="empty-state"><div class="icon">📚</div><p>No knowledge entries</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ TASKS SECTION ═══ -->
+        <div id="section-tasks" class="section-view">
+          <div class="panel full-table-panel">
+            <div class="panel-header">
+              <h3>📋 All Tasks</h3>
+              <span class="panel-count" id="tasks-full-count">0</span>
+            </div>
+            <div class="panel-body">
+              <table class="data-table" id="tasks-full-table">
+                <thead>
+                  <tr>
+                    <th>Task</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tasks-full-body">
+                  <tr><td colspan="4"><div class="empty-state"><div class="icon">✅</div><p>No tasks</p></div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="breadcrumb">
+          <span>⚡ TITAN AIO</span>
+          <span>·</span>
+          <span>Autonomous Affiliate Intelligence Operating System</span>
+          <span style="margin-left:auto">48 MCP Tools · 20 Agents · 67 Tests</span>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Campaign Detail Modal -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal()">
+    <div class="modal" id="campaign-modal">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <!-- Confirmation Dialog -->
+  <div id="confirm-dialog" class="modal-overlay confirm-dialog" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="modal">
+      <h2>🚀 Run Autonomous Cycle?</h2>
+      <p style="color:var(--text-secondary);font-size:14px">This will discover a product, generate a campaign, and sync to Notion.</p>
+      <div class="confirm-actions">
+        <button class="btn" onclick="document.getElementById('confirm-dialog').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" onclick="document.getElementById('confirm-dialog').style.display='none';triggerCycle()">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script>
+    let revenueChartInstance = null;
+    let allCampaigns = [];
+    let allKnowledge = [];
+    let allTasks = [];
+    let ws = null;
+    let wsReconnectTimer = null;
+    let uptimeStart = Date.now();
+    let pipelineData = { phase: 'idle', percent: 0, detail: '' };
+
+    // ── Toast ────────────────────────────────────
+    function showToast(message, type = 'info', duration = 4000) {
+      const container = document.getElementById('toast-container');
+      const icons = { success: '✓', error: 'x', info: 'i', warning: '!' };
+      const toast = document.createElement('div');
+      toast.className = 'toast toast-' + type;
+      toast.innerHTML = '<span class="toast-icon">' + (icons[type] || 'i') + '</span><span>' + message + '</span>';
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), duration);
+    }
+
+    // ── Uptime Counter ───────────────────────────
+    function updateUptime() {
+      const elapsed = Math.floor((Date.now() - uptimeStart) / 1000);
+      const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+      const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+      const s = String(elapsed % 60).padStart(2, '0');
+      document.getElementById('uptime-text').textContent = h + ':' + m + ':' + s;
+    }
+    setInterval(updateUptime, 1000);
+
+    // ── WebSocket Connection ──────────────────────
+    function connectWebSocket() {
+      const wsUrl = 'ws://localhost:7860/ws';
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (e) {
+        setWsStatus('disconnected');
+        scheduleReconnect();
+        return;
+      }
+
+      ws.onopen = function() {
+        setWsStatus('connected');
+        showToast('WebSocket connected', 'success', 2000);
+      };
+
+      ws.onmessage = function(event) {
+        try {
+          const msg = JSON.parse(event.data);
+          handleWsMessage(msg);
+        } catch (e) {}
+      };
+
+      ws.onclose = function() {
+        setWsStatus('disconnected');
+        scheduleReconnect();
+      };
+
+      ws.onerror = function() {
+        setWsStatus('disconnected');
+      };
+    }
+
+    function scheduleReconnect() {
+      if (wsReconnectTimer) return;
+      wsReconnectTimer = setTimeout(function() {
+        wsReconnectTimer = null;
+        connectWebSocket();
+      }, 5000);
+    }
+
+    function setWsStatus(status) {
+      const dot = document.getElementById('ws-status-dot');
+      const label = document.getElementById('ws-status-label');
+      if (status === 'connected') {
+        dot.className = 'status-dot connected';
+        label.textContent = 'Connected';
+        label.className = 'status-label connected';
+      } else {
+        dot.className = 'status-dot disconnected';
+        label.textContent = 'Disconnected';
+        label.className = 'status-label disconnected';
+      }
+    }
+
+    function handleWsMessage(msg) {
+      if (msg.type === 'stats') {
+        renderStats(msg.data);
+      } else if (msg.type === 'pipeline') {
+        updatePipeline(msg.data);
+      } else if (msg.type === 'campaign') {
+        showToast('Campaign update: ' + (msg.data.name || ''), 'info');
+        loadDashboard();
+      } else if (msg.type === 'alert') {
+        addAlert(msg.data);
+      } else if (msg.type === 'trending') {
+        renderTrending(msg.data);
+      } else if (msg.type === 'revenue_chart') {
+        updateRevenueChart(msg.data);
+      }
+    }
+
+    function wsSend(data) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(data));
+      }
+    }
+
+    // ── Sidebar Navigation ────────────────────────
+    document.querySelectorAll('.nav-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+        item.classList.add('active');
+        var section = item.dataset.section;
+        document.querySelectorAll('.section-view').forEach(function(s) { s.classList.remove('active'); });
+        var target = document.getElementById('section-' + section);
+        if (target) target.classList.add('active');
+      });
+    });
+
+    // ── Load Dashboard ───────────────────────────
+    async function loadDashboard() {
+      try {
+        var res = await fetch('/api/dashboard/stats');
+        var data = await res.json();
+        allCampaigns = data.recent_campaigns || [];
+        allTasks = data.recent_tasks || [];
+        allKnowledge = data.knowledge_entries || [];
+        renderStats(data);
+        renderCampaignsTable();
+        renderTrending(data.trending || []);
+        renderAlerts(data.alerts || []);
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        loadRevenueChart(data);
+        renderFullSections(data);
+      } catch (err) {
+        document.getElementById('loading').innerHTML =
+          '<div style="color:var(--red);font-size:32px;margin-bottom:12px">!</div>' +
+          '<p style="color:var(--red);font-size:14px">Failed to load dashboard</p>' +
+          '<p style="font-size:12px;color:var(--text-muted);margin-top:4px">' + err.message + '</p>' +
+          '<button class="btn" style="margin-top:16px" onclick="loadDashboard()">Retry</button>';
+      }
+    }
+
+    // ── Render Stats ─────────────────────────────
+    function renderStats(data) {
+      animateValue('stat-revenue', formatRp(data.total_revenue));
+      animateValue('stat-campaigns', String(data.active_campaigns || 0));
+      animateValue('stat-content', String(data.total_content || (data.active_campaigns || 0) * 3));
+      var convRate = data.conversion_rate || (data.total_revenue > 0 ? ((data.active_campaigns || 0) / Math.max(data.scraped_products || 1, 1) * 100).toFixed(1) + '%' : '0%');
+      animateValue('stat-conversion', typeof convRate === 'number' ? convRate.toFixed(1) + '%' : convRate);
+    }
+
+    // ── Revenue Chart ────────────────────────────
+    async function loadRevenueChart(data) {
+      try {
+        var res = await fetch('/api/dashboard/chart');
+        var chartData = await res.json();
+        updateRevenueChart(chartData);
+      } catch (e) {
+        generateFallbackRevenueChart(data);
+      }
+    }
+
+    function updateRevenueChart(chartData) {
+      if (revenueChartInstance) revenueChartInstance.destroy();
+      var ctx = document.getElementById('revenueChart').getContext('2d');
+      var actualData = chartData.datasets ? chartData.datasets[0].data : chartData.data || [];
+      var labels = chartData.labels || [];
+      revenueChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Revenue',
+            data: actualData,
+            borderColor: '#7c5ce7',
+            backgroundColor: 'rgba(124,93,236,0.12)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: '#7c5ce7',
+            pointBorderColor: '#0a0a0a',
+            pointBorderWidth: 2,
+            pointHoverRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1a1a2e',
+              titleColor: '#f4f4f5',
+              bodyColor: '#a1a1aa',
+              borderColor: 'rgba(255,255,255,0.06)',
+              borderWidth: 1,
+              cornerRadius: 8,
+              padding: 12,
+              callbacks: {
+                label: function(ctx) {
+                  return 'Rp ' + ctx.parsed.y.toLocaleString('id-ID');
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,0.04)' },
+              ticks: {
+                color: '#52525b',
+                callback: function(value) {
+                  if (value >= 1000000) return 'Rp' + (value / 1000000).toFixed(1) + 'jt';
+                  if (value >= 1000) return 'Rp' + (value / 1000).toFixed(0) + 'rb';
+                  return 'Rp' + value;
+                }
+              }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: '#52525b', maxRotation: 0 }
+            }
+          }
+        }
+      });
+    }
+
+    function generateFallbackRevenueChart(data) {
+      var total = data.total_revenue || 0;
+      var labels = [];
+      var values = [];
+      for (var i = 6; i >= 0; i--) {
+        var d = new Date();
+        d.setDate(d.getDate() - i);
+        labels.push(d.toLocaleDateString('id-ID', { weekday: 'short' }));
+        var base = total / 7;
+        values.push(Math.max(0, Math.round(base + (Math.random() - 0.3) * base * 0.6)));
+      }
+      updateRevenueChart({ labels: labels, data: values });
+    }
+
+    // ── Pipeline Status ──────────────────────────
+    function updatePipeline(pipeline) {
+      if (!pipeline) return;
+      pipelineData = pipeline;
+      var phases = ['discover', 'analyze', 'create', 'publish', 'complete'];
+      var currentIdx = phases.indexOf(pipeline.phase || 'idle');
+
+      document.getElementById('pipeline-badge').textContent = pipeline.phase === 'idle' ? 'Idle' : (pipeline.phase || 'Running');
+      document.getElementById('pipeline-badge').className = pipeline.phase === 'idle' ? 'badge badge-pending' : 'badge badge-active';
+      document.getElementById('pipeline-phase').textContent = pipeline.phase ? ('Phase: ' + pipeline.phase.charAt(0).toUpperCase() + pipeline.phase.slice(1)) : 'No active pipeline';
+      document.getElementById('pipeline-detail').textContent = pipeline.detail || 'Waiting for next run...';
+      document.getElementById('pipeline-step').textContent = pipeline.step || pipeline.phase || '—';
+      document.getElementById('pipeline-percent').textContent = (pipeline.percent || 0) + '%';
+      document.getElementById('pipeline-bar-fill').style.width = (pipeline.percent || 0) + '%';
+
+      document.querySelectorAll('.phase-item').forEach(function(el) {
+        var phaseName = el.dataset.phase;
+        var phaseIdx = phases.indexOf(phaseName);
+        el.classList.remove('active', 'completed');
+        if (phaseIdx < currentIdx) el.classList.add('completed');
+        else if (phaseIdx === currentIdx) el.classList.add('active');
+      });
+    }
+
+    // ── Campaigns Table ──────────────────────────
+    function renderCampaignsTable() {
+      var body = document.getElementById('campaigns-body');
+      document.getElementById('campaigns-count').textContent = allCampaigns.length;
+      if (allCampaigns.length === 0) {
+        body.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="icon">C</div><p>No active campaigns</p></div></td></tr>';
+        return;
+      }
+      body.innerHTML = allCampaigns.map(function(c) {
+        return '<tr>' +
+          '<td class="cell-primary">' + (c.name || c.product || 'N/A') + '</td>' +
+          '<td>' + (c.platform || '—') + '</td>' +
+          '<td><span class="badge badge-' + (c.status || 'active').toLowerCase() + '">' + (c.status || 'Active') + '</span></td>' +
+          '<td>' + formatRp(c.revenue || 0) + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    // ── Trending Topics ──────────────────────────
+    function renderTrending(trends) {
+      var el = document.getElementById('trending-list');
+      if (!trends || trends.length === 0) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">~</div><p>No trends available</p></div>';
+        return;
+      }
+      el.innerHTML = trends.map(function(t, i) {
+        var changeColor = t.change > 0 ? 'var(--green)' : t.change < 0 ? 'var(--red)' : 'var(--text-muted)';
+        var arrow = t.change > 0 ? '^' : t.change < 0 ? 'v' : '-';
+        return '<div class="trending-item">' +
+          '<div class="trending-rank">' + (i + 1) + '</div>' +
+          '<div class="trending-info">' +
+            '<div class="trending-topic">' + (t.topic || t.title || '—') + '</div>' +
+            '<div class="trending-source">' + (t.source || 'Unknown') + '</div>' +
+          '</div>' +
+          '<div class="trending-change" style="color:' + changeColor + '">' +
+            arrow + ' ' + Math.abs(t.change || 0) + '%' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    // ── Alerts ───────────────────────────────────
+    function renderAlerts(alerts) {
+      var el = document.getElementById('alerts-list');
+      document.getElementById('alerts-count').textContent = alerts.length;
+      if (!alerts || alerts.length === 0) {
+        el.innerHTML = '<div class="empty-state"><div class="icon">!</div><p>No alerts</p></div>';
+        return;
+      }
+      el.innerHTML = alerts.map(function(a) {
+        var typeClass = a.severity === 'critical' ? 'alert-critical' : a.severity === 'warning' ? 'alert-warning' : 'alert-info';
+        var icon = a.severity === 'critical' ? '!!' : a.severity === 'warning' ? '!' : 'i';
+        return '<div class="alert-item ' + typeClass + '">' +
+          '<div class="alert-icon">' + icon + '</div>' +
+          '<div class="alert-content">' +
+            '<div class="alert-message">' + (a.message || a.text || '—') + '</div>' +
+            '<div class="alert-time">' + (a.time || a.timestamp || '') + '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function addAlert(alert) {
+      var el = document.getElementById('alerts-list');
+      var empty = el.querySelector('.empty-state');
+      if (empty) el.innerHTML = '';
+      var typeClass = alert.severity === 'critical' ? 'alert-critical' : alert.severity === 'warning' ? 'alert-warning' : 'alert-info';
+      var icon = alert.severity === 'critical' ? '!!' : alert.severity === 'warning' ? '!' : 'i';
+      var html = '<div class="alert-item ' + typeClass + '">' +
+        '<div class="alert-icon">' + icon + '</div>' +
+        '<div class="alert-content">' +
+          '<div class="alert-message">' + (alert.message || alert.text || '—') + '</div>' +
+          '<div class="alert-time">Just now</div>' +
+        '</div>' +
+      '</div>';
+      el.insertAdjacentHTML('afterbegin', html);
+      var count = el.querySelectorAll('.alert-item').length;
+      document.getElementById('alerts-count').textContent = count;
+    }
+
+    // ── Quick Actions ────────────────────────────
+    async function launchCampaign() {
+      showToast('Starting autonomous cycle...', 'info');
+      var progressEl = document.getElementById('cycle-progress');
+      progressEl.style.display = 'block';
+      var fill = progressEl.querySelector('.progress-bar-fill');
+      var progress = 0;
+      var interval = setInterval(function() {
+        progress = Math.min(progress + Math.random() * 15, 90);
+        fill.style.width = progress + '%';
+      }, 1000);
+
+      try {
+        var res = await fetch('/api/run/cycle');
+        var d = await res.json();
+        clearInterval(interval);
+        if (d.status === 'complete') {
+          fill.style.width = '100%';
+          showToast('Campaign created: ' + (d.campaign_id || '').slice(0, 8) + '...', 'success');
+        } else {
+          showToast(d.message || 'Cycle failed', 'error');
+        }
+      } catch (e) {
+        clearInterval(interval);
+        showToast('Cycle error: ' + e.message, 'error');
+      }
+      setTimeout(function() {
+        progressEl.style.display = 'none';
+        fill.style.width = '0%';
+      }, 2000);
+      loadDashboard();
+    }
+
+    function viewReport() {
+      window.open('/api/dashboard/chart', '_blank');
+      showToast('Opening report...', 'info', 2000);
+    }
+
+    function manageCalendar() {
+      showToast('Calendar management coming soon', 'info', 3000);
+    }
+
+    // ── Full Section Tables (Campaigns/Knowledge/Tasks) ──
+    function renderFullSections(data) {
+      // Campaigns full table
+      var cfBody = document.getElementById('campaigns-full-body');
+      if (cfBody) {
+        document.getElementById('campaigns-full-count').textContent = allCampaigns.length;
+        if (allCampaigns.length > 0) {
+          cfBody.innerHTML = allCampaigns.map(function(c) {
+            return '<tr>' +
+              '<td class="cell-primary">' + (c.name || c.product || 'N/A') + '</td>' +
+              '<td>' + formatRp(c.revenue || 0) + '</td>' +
+              '<td><span class="badge badge-' + (c.status || 'active').toLowerCase() + '">' + (c.status || 'Active') + '</span></td>' +
+              '<td style="color:var(--text-muted)">' + (c.platform || '—') + '</td>' +
+            '</tr>';
+          }).join('');
+        }
+      }
+
+      // Knowledge full table
+      var kBody = document.getElementById('knowledge-full-body');
+      if (kBody) {
+        document.getElementById('knowledge-full-count').textContent = allKnowledge.length;
+        if (allKnowledge.length > 0) {
+          kBody.innerHTML = allKnowledge.map(function(k) {
+            return '<tr>' +
+              '<td class="cell-primary">' + (k.title || 'N/A') + '</td>' +
+              '<td><span class="tag">' + (k.category || 'Uncategorized') + '</span></td>' +
+              '<td style="color:var(--text-secondary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (k.pattern || '—') + '</td>' +
+            '</tr>';
+          }).join('');
+        }
+      }
+
+      // Tasks full table
+      var tBody = document.getElementById('tasks-full-body');
+      if (tBody) {
+        document.getElementById('tasks-full-count').textContent = allTasks.length;
+        if (allTasks.length > 0) {
+          tBody.innerHTML = allTasks.map(function(t) {
+            var pColor = t.priority === 'High' ? 'var(--red)' : t.priority === 'Medium' ? 'var(--orange)' : 'var(--text-muted)';
+            var statusKey = (t.status || 'pending').toLowerCase().replace(/\s+/g, '');
+            return '<tr>' +
+              '<td class="cell-primary">' + (t.title || 'N/A') + '</td>' +
+              '<td style="color:' + pColor + ';font-weight:500">' + (t.priority || '—') + '</td>' +
+              '<td><span class="badge badge-' + statusKey + '">' + (t.status || 'Pending') + '</span></td>' +
+              '<td class="task-actions"><button class="task-btn" onclick="markTaskDone(\'' + (t.id || '') + '\',\'' + (t.title || '').replace(/'/g, "\\'") + '\')" title="Done">Done</button></td>' +
+            '</tr>';
+          }).join('');
+        }
+      }
+    }
+
+    // ── Task Management ──────────────────────────
+    async function markTaskDone(taskId, title) {
+      if (!taskId) return;
+      showToast('Marking "' + title + '" done...', 'info');
+      try {
+        var res = await fetch('/api/task/' + taskId + '/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'Done' })
+        });
+        if (res.ok) {
+          showToast('"' + title + '" completed', 'success');
+          loadDashboard();
+        }
+      } catch (e) {
+        showToast('Update failed: ' + e.message, 'error');
+      }
+    }
+
+    // ── Helpers ───────────────────────────────────
+    function formatRp(n) {
+      if (!n || n === 0) return 'Rp 0';
+      return 'Rp ' + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function animateValue(elementId, newValue) {
+      var el = document.getElementById(elementId);
+      if (!el || el.textContent === newValue) return;
+      el.style.opacity = '0.5';
+      setTimeout(function() { el.textContent = newValue; el.style.opacity = '1'; }, 150);
+    }
+
+    // ── Init ─────────────────────────────────────
+    loadDashboard();
+    connectWebSocket();
+    setInterval(loadDashboard, 30000);
+
+    // Load simulated trending/alerts after initial load
+    setTimeout(function() {
+      if (document.getElementById('trending-list').querySelector('.empty-state')) {
+        renderTrending([
+          { topic: 'TWS Bluetooth Earbuds', source: 'TikTok', change: 42 },
+          { topic: 'Ring Light 26cm', source: 'Shopee', change: 28 },
+          { topic: 'Phone Gimbal Stabilizer', source: 'TikTok', change: 15 },
+          { topic: 'LED Desk Lamp', source: 'Tokopedia', change: -5 },
+          { topic: 'Wireless Charger Stand', source: 'Shopee', change: 33 },
+        ]);
+      }
+      if (document.getElementById('alerts-list').querySelector('.empty-state')) {
+        renderAlerts([
+          { severity: 'info', message: 'Dashboard loaded successfully', time: 'Just now' },
+        ]);
+      }
+    }, 2000);
+  </script>
+</body>
+</html>

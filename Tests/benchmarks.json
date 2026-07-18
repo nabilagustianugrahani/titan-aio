@@ -1,0 +1,104 @@
+{
+  "benchmarks": [
+    {
+      "name": "health",
+      "category": "mcp_tool",
+      "elapsed_ms": 4.61,
+      "avg_ms": 4.61,
+      "mem_peak_kb": 80.7,
+      "success": true,
+      "error": "",
+      "iterations": 1
+    },
+    {
+      "name": "generate_offer",
+      "category": "mcp_tool",
+      "elapsed_ms": 0.13,
+      "avg_ms": 0.13,
+      "mem_peak_kb": 3.5,
+      "success": true,
+      "error": "",
+      "iterations": 1
+    },
+    {
+      "name": "generate_hooks",
+      "category": "mcp_tool",
+      "elapsed_ms": 154.16,
+      "avg_ms": 154.16,
+      "mem_peak_kb": 1730.0,
+      "success": true,
+      "error": "",
+      "iterations": 1
+    },
+    {
+      "name": "generate_script",
+      "category": "mcp_tool",
+      "elapsed_ms": 0.24,
+      "avg_ms": 0.24,
+      "mem_peak_kb": 11.8,
+      "success": true,
+      "error": "",
+      "iterations": 1
+    },
+    {
+      "name": "ProductAgent",
+      "category": "agent",
+      "elapsed_ms": 14.76,
+      "avg_ms": 14.76,
+      "mem_peak_kb": 0.0,
+      "success": true,
+      "error": "",
+      "iterations": 1
+    },
+    {
+      "name": "ReviewAgent",
+      "category": "agent",
+      "elapsed_ms": 17.51,
+      "avg_ms": 17.51,
+      "mem_peak_kb": 0.0,
+      "success": true,
+      "error": "",
+      "iterations": 1
+    },
+    {
+      "name": "ContentAgent",
+      "category": "agent",
+      "elapsed_ms": 11.77,
+      "avg_ms": 11.77,
+      "mem_peak_kb": 0.0,
+      "success": true,
+      "error": "",
+      "iterations": 1
+    },
+    {
+      "name": "OfferAgent",
+      "category": "agent",
+      "elapsed_ms": 0.09,
+      "avg_ms": 0.09,
+      "mem_peak_kb": 0.0,
+      "success": true,
+      "error": "",
+      "iterations": 1
+    },
+    {
+      "name": "create_affiliate_package",
+      "category": "full_pipeline",
+      "elapsed_ms": 73.32,
+      "avg_ms": 73.32,
+      "mem_peak_kb": 184.9,
+      "success": true,
+      "error": "",
+      "iterations": 1
+    }
+  ],
+  "summary": {
+    "total_time_ms": 276.59,
+    "total_benchmarks": 9,
+    "passed": 9,
+    "failed": 0,
+    "memory": {
+      "vms_mb": 296.1,
+      "rss_mb": 93.7
+    }
+  }
+}

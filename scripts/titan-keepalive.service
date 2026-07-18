@@ -1,0 +1,16 @@
+[Unit]
+Description=TITAN AIO HF Spaces KeepAlive
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=Aa
+ExecStart=/usr/bin/python3 /home/Aa/ugc/scripts/keepalive.py
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

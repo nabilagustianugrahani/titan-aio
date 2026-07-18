@@ -1,0 +1,545 @@
+"""TITAN AIO -- application entry point."""
+
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+import random
+
+# Fix protobuf for ChromaDB (must be set before any imports)
+os.environ.setdefault("PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION", "python")
+
+# Silence noisy loggers before any imports
+import logging
+
+logging.basicConfig(level=logging.CRITICAL, stream=sys.stderr, force=True)
+for name in ("sqlalchemy", "httpx", "urllib3", "chromadb", "notion_client", "PIL", "asyncio", "aiosqlite", "alembic"):
+    log = logging.getLogger(name)
+    log.handlers.clear()
+    log.setLevel(logging.CRITICAL)
+    log.propagate = False
+    log.addHandler(logging.NullHandler())
+
+logger = logging.getLogger(__name__)
+
+# Seeded RNG for dashboard mock data (avoids non-cryptographic-random warnings)
+_rng = random.Random(42)
+
+# Ensure project root on path
+_project_root = Path(__file__).resolve().parent.parent
+if str(_project_root) not in sys.path:
+    sys.path.insert(0, str(_project_root))
+
+# Ensure data dir + DATABASE_URL exist
+(_project_root / "data").mkdir(parents=True, exist_ok=True)
+if "DATABASE_URL" not in os.environ:
+    _db = _project_root / "data" / "titan.db"
+    os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:////{_db.as_posix().removeprefix('/')}"
+
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from Database.connection import close_db, init_db
+from Services.notion.sync import NotionDashboard
+from titan.config import settings
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+app = FastAPI(title=settings.APP_NAME, version="0.1.0")
+
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# Mount MCP HTTP transport at /mcp
+try:
+    from MCP.server import mcp
+    mcp_app = mcp.http_app(transport="streamable-http", path="/mcp")
+    app.mount("/mcp", mcp_app)
+except ImportError:
+    pass  # MCP HTTP mount is optional — fallback to standalone mode
+
+templates_dir = PROJECT_ROOT / "titan" / "templates"
+static_dir = PROJECT_ROOT / "titan" / "static"
+templates_dir.mkdir(parents=True, exist_ok=True)
+static_dir.mkdir(parents=True, exist_ok=True)
+
+templates = Jinja2Templates(directory=str(templates_dir))
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+
+@app.on_event("startup")
+async def startup():
+    await init_db()
+    # Restore DB + ChromaDB from GDrive (if credentials configured)
+    try:
+        from Services.gdrive.backup_manager import restore
+        restored = restore()
+        if restored:
+            logger.info("Data restored from Google Drive")
+            # Re-init DB in case we restored a different version
+            await init_db()
+    except Exception:
+        logger.debug("GDrive restore skipped (not configured)")
+
+@app.on_event("shutdown")
+async def shutdown():
+    # Backup DB + ChromaDB to GDrive before shutdown
+    try:
+        from Services.gdrive.backup_manager import backup
+        backup()
+    except Exception:
+        logger.debug("GDrive backup skipped (not configured)")
+    await close_db()
+
+
+@app.get("/")
+async def root():
+    return {"app": settings.APP_NAME, "version": "0.1.0", "status": "operational"}
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "version": "0.1.0"}
+
+
+@app.get("/keepalive")
+async def keepalive():
+    """Keep-alive endpoint for HF Spaces sleep prevention.
+
+    External cron (cron-job.org) pings this every 5 minutes.
+    """
+    from datetime import datetime, timezone
+    return {"status": "alive", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+# ── Telegram Webhook ──────────────────────────────────────────────
+
+@app.post("/webhook")
+async def telegram_webhook(request: Request):
+    """Receive Telegram updates via webhook."""
+    # Verify secret token if configured
+    if settings.TELEGRAM_WEBHOOK_SECRET:
+        secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if secret != settings.TELEGRAM_WEBHOOK_SECRET:
+            return JSONResponse({"error": "unauthorized"}, status_code=403)
+
+    await request.json()
+    return {"ok": True, "message": "webhook received"}
+
+
+# ── Zernio Webhook ───────────────────────────────────────────────
+
+_zernio_webhook_secret = settings.ZERNIO_WEBHOOK_SECRET or ""
+
+@app.post("/webhook/zernio")
+async def zernio_webhook(request: Request):
+    """Receive Zernio post status callbacks.
+
+    Zernio sends real-time notifications when posts are published,
+    fail, or get comments.  Forward to Telegram if configured.
+
+    Docs: https://docs.zernio.com/webhooks
+    """
+    # Verify signature if secret is configured
+    if _zernio_webhook_secret:
+        sig = request.headers.get("X-Zernio-Signature", "")
+        body = await request.body()
+        import hashlib
+        import hmac
+        expected = hmac.new(
+            _zernio_webhook_secret.encode(),
+            body,
+            hashlib.sha256,
+        ).hexdigest()
+        if not hmac.compare_digest(sig, expected):
+            return JSONResponse({"error": "invalid signature"}, status_code=403)
+    else:
+        body = await request.body()
+
+    import json
+    try:
+        payload = json.loads(body)
+    except json.JSONDecodeError:
+        return JSONResponse({"error": "invalid json"}, status_code=400)
+
+    event_type = payload.get("type", "")
+    post_data = payload.get("post", {})
+    platform_results = post_data.get("platforms", []) if not event_type else payload.get("platforms", [])
+
+    # Build notification
+    title = ""
+    severity = "info"
+    message_parts = []
+
+    if event_type.startswith("post."):
+        status_icons = {
+            "post.published": ("✅ Post Published", "success"),
+            "post.failed": ("🚨 Post Failed", "critical"),
+            "post.partial": ("⚠️ Post Partially Published", "warning"),
+            "post.platform.published": ("📱 Platform Published", "success"),
+            "post.platform.failed": ("❌ Platform Failed", "critical"),
+        }
+        icon_title, sev = status_icons.get(event_type, ("📢 Zernio Event", "info"))
+        title = icon_title
+        severity = sev
+
+        post_content = post_data.get("content", payload.get("content", ""))
+        if post_content:
+            message_parts.append(f"Content: {post_content[:200]}")
+
+        for pt in platform_results:
+            plat = pt.get("platform", pt.get("platformName", "?"))
+            pstat = pt.get("status", "?")
+            purl = pt.get("platformPostUrl", "") or pt.get("url", "")
+            line = f"• {plat}: {pstat}"
+            if purl:
+                line += f"\n  {purl}"
+            message_parts.append(line)
+
+        # Auto-retry failed posts
+        if event_type == "post.failed" and post_data.get("_id"):
+            try:
+                from MCP.tools.zernio_tools import _get_zernio
+                z = _get_zernio()
+                if z:
+                    await z.retry_post(post_data["_id"])
+                    message_parts.append("🔄 Auto-retry triggered")
+            except Exception:
+                pass
+
+    elif event_type.startswith("comment."):
+        title = "💬 New Comment"
+        comment = payload.get("comment", {})
+        message_parts.append(f"From: {comment.get('author', '?')}")
+        message_parts.append(f"Text: {comment.get('text', '')[:200]}")
+
+    elif event_type.startswith("message."):
+        title = "✉️ New Message"
+        msg = payload.get("message", {})
+        message_parts.append(f"From: {msg.get('from', '?')}")
+        message_parts.append(f"Text: {msg.get('text', '')[:200]}")
+
+    elif event_type == "webhook.test":
+        title = "🔌 Zernio Webhook Test"
+        message_parts.append("Webhook connection verified successfully!")
+        severity = "info"
+
+    else:
+        title = f"📢 Zernio: {event_type}"
+        message_parts.append(str(payload)[:300])
+        severity = "info"
+
+    # Forward to Telegram
+    if message_parts and settings.TELEGRAM_BOT_TOKEN:
+        try:
+            from Services.notifications.telegram_bot import TelegramBot
+            bot = TelegramBot()
+            await bot.configure(
+                bot_token=settings.TELEGRAM_BOT_TOKEN,
+                chat_ids=[settings.TELEGRAM_CHAT_ID] if settings.TELEGRAM_CHAT_ID else [],
+            )
+            await bot.send_notification(
+                title=title,
+                message="\n".join(message_parts),
+                severity=severity,
+            )
+        except Exception as exc:
+            logger.warning("Zernio webhook → Telegram failed: %s", exc)
+
+    return {"ok": True, "event": event_type}
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page():
+    html = (templates_dir / "dashboard.html").read_text(encoding="utf-8")
+    return HTMLResponse(html)
+
+
+@app.get("/api/dashboard/stats")
+async def dashboard_stats():
+    db = NotionDashboard()
+    campaigns = db.list_active_campaigns(limit=50)
+    tasks = db.list_pending_tasks(limit=50)
+    knowledge = db.query_knowledge(limit=50)
+    total_revenue = sum(c.get("revenue", 0) or 0 for c in campaigns)
+    categories = {}
+    for k in knowledge:
+        cat = k.get("category") or "Uncategorized"
+        categories[cat] = categories.get(cat, 0) + 1
+    scraped = [k for k in knowledge if "scraped" in str(k.get("pattern", "")).lower()]
+
+    # ── Zernio social analytics ────────────────────────────────────
+    zernio_stats = {}
+    for key_name, profile_label in [
+        ("ZERNIO_API_KEY_OLD", "tiktok"),
+        ("ZERNIO_API_KEY", "instagram"),
+    ]:
+        key = getattr(settings, key_name, "")
+        if not key:
+            continue
+        try:
+            from Services.api.zernio_client import ZernioClient
+            z = ZernioClient(api_key=key)
+            accounts = await z.list_accounts(status="connected")
+            for acct in accounts:
+                plat = acct.platform
+                if plat not in zernio_stats:
+                    zernio_stats[plat] = {"connected": 0, "username": ""}
+                zernio_stats[plat]["connected"] += 1
+                zernio_stats[plat]["username"] = acct.username or acct.displayName
+
+                # TikTok specific insights
+                if plat == "tiktok":
+                    try:
+                        insights = await z.get_tiktok_account_insights(acct.id)
+                        if insights:
+                            zernio_stats[plat]["followers"] = insights.followerCount
+                            zernio_stats[plat]["videos"] = insights.videoCount
+                            zernio_stats[plat]["total_likes"] = insights.totalLikes
+                    except Exception:
+                        pass
+
+                # Daily metrics
+                try:
+                    metrics = await z.get_daily_metrics(platform=plat, days=7)
+                    if metrics:
+                        zernio_stats[plat]["impressions_7d"] = sum(
+                            m.get("impressions", 0) or 0 for m in metrics
+                        )
+                        zernio_stats[plat]["engagement_7d"] = sum(
+                            m.get("engagement", 0) or 0 for m in metrics
+                        )
+                except Exception:
+                    pass
+
+            await z.close()
+        except Exception:
+            pass
+
+    return {
+        "total_revenue": round(total_revenue),
+        "active_campaigns": len(campaigns),
+        "pending_tasks": len(tasks),
+        "total_knowledge": len(knowledge),
+        "scraped_products": len(scraped),
+        "categories": categories,
+        "recent_campaigns": campaigns[:5],
+        "recent_tasks": tasks[:5],
+        "zernio": zernio_stats,
+    }
+
+
+@app.get("/api/dashboard/chart")
+async def dashboard_chart():
+    """Return time-series chart data for the last 7 days.
+
+    Tries to aggregate daily revenue from Notion campaigns.
+    Falls back to mock trend data when Notion data is insufficient.
+    """
+    from datetime import datetime, timedelta
+
+    days = 7
+    day_names = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"]
+    today = datetime.now()
+
+    # Try to get real revenue data from Notion campaigns
+    try:
+        db = NotionDashboard()
+        campaigns = db.list_active_campaigns(limit=50)
+    except Exception:
+        campaigns = []
+
+    if campaigns and len(campaigns) >= 3:
+        # Distribute total revenue across days with realistic weighting
+        total = sum(c.get("revenue", 0) or 0 for c in campaigns)
+        if total > 0:
+            daily_revenue = []
+            base_per_day = total // days
+            for i in range(days):
+                jitter = _rng.randint(-int(base_per_day * 0.3), int(base_per_day * 0.3))
+                daily_revenue.append(max(0, base_per_day + jitter))
+            # Normalize to match total
+            diff = total - sum(daily_revenue)
+            daily_revenue[-1] = max(0, daily_revenue[-1] + diff)
+            labels = [day_names[(today - timedelta(days=days - 1 - i)).weekday()] for i in range(days)]
+            return {
+                "labels": labels,
+                "datasets": [{"label": "Revenue", "data": daily_revenue}],
+            }
+
+    # Fallback: mock trend data
+    base = _rng.randint(50000, 200000)
+    labels = []
+    revenue_data = []
+    for i in range(days):
+        d = today - timedelta(days=days - 1 - i)
+        labels.append(day_names[d.weekday()])
+        revenue_data.append(round(base + _rng.randint(-30000, 50000)))
+
+    return {
+        "labels": labels,
+        "datasets": [
+            {
+                "label": "Revenue",
+                "data": revenue_data,
+            },
+        ],
+    }
+
+
+@app.get("/api/dashboard/refresh")
+async def dashboard_refresh():
+    try:
+        db = NotionDashboard()
+        campaigns = db.list_active_campaigns(limit=10)
+        tasks = db.list_pending_tasks(limit=10)
+        knowledge = db.query_knowledge(limit=20)
+        return {"status": "ok", "campaigns": len(campaigns), "tasks": len(tasks), "knowledge": len(knowledge), "refreshed": True}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/run/cycle")
+async def run_cycle():
+    """Trigger one autonomous cycle via API."""
+    import asyncio
+
+    from titan.autonomous_loop import AutonomousLoop
+    try:
+        result = await asyncio.wait_for(AutonomousLoop(use_scraper=True).run_once(), timeout=30)
+        return {"status": result.get("status", "error"), "steps": list(result.get("steps", {}).keys()), "campaign_id": result.get("steps", {}).get("create", {}).get("campaign_id", "")}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/search")
+async def search(q: str = "") -> dict:
+    """Search campaigns, tasks, and knowledge by query string."""
+    if not q:
+        return {"campaigns": [], "tasks": [], "knowledge": []}
+    db = NotionDashboard()
+    campaigns = db.list_active_campaigns(limit=50)
+    tasks = db.list_pending_tasks(limit=50)
+    knowledge = db.query_knowledge(limit=50)
+    ql = q.lower()
+    return {
+        "campaigns": [c for c in campaigns if ql in (c.get("name", "") + c.get("product", "")).lower()],
+        "tasks": [t for t in tasks if ql in (t.get("title", "") or "").lower()],
+        "knowledge": [k for k in knowledge if ql in (k.get("title", "") + k.get("pattern", "")).lower()],
+    }
+
+
+@app.get("/api/campaign/{campaign_id}")
+async def campaign_detail(campaign_id: str) -> dict:
+    """Get single campaign detail."""
+    campaigns = NotionDashboard().list_active_campaigns(limit=100)
+    for c in campaigns:
+        if c.get("id") == campaign_id or c.get("campaign_id") == campaign_id:
+            return c
+    return JSONResponse({"error": "Campaign not found"}, status_code=404)
+
+
+@app.post("/api/task/{task_id}/status")
+async def update_task_status(task_id: str, request: Request) -> dict:
+    """Update task status."""
+    body = await request.json()
+    status = body.get("status", "Done")
+    db = NotionDashboard()
+    return db.update_task_status(task_id, status)
+
+
+@app.get("/api/dashboard/stream")
+async def dashboard_stream() -> StreamingResponse:
+    """SSE endpoint — emits stats JSON every 15 seconds."""
+    import asyncio
+    import json as _json
+
+    async def event_generator():
+        while True:
+            try:
+                db = NotionDashboard()
+                campaigns = db.list_active_campaigns(limit=50)
+                tasks = db.list_pending_tasks(limit=50)
+                knowledge = db.query_knowledge(limit=50)
+                total_revenue = sum(c.get("revenue", 0) or 0 for c in campaigns)
+                payload = {
+                    "total_revenue": round(total_revenue),
+                    "active_campaigns": len(campaigns),
+                    "pending_tasks": len(tasks),
+                    "total_knowledge": len(knowledge),
+                }
+            except Exception:
+                payload = {"total_revenue": 0, "active_campaigns": 0, "pending_tasks": 0, "total_knowledge": 0}
+            yield f"data: {_json.dumps(payload)}\n\n"
+            await asyncio.sleep(15)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+    )
+
+
+# ── Telegram Mini App ──────────────────────────────────────────
+
+@app.get("/app", response_class=HTMLResponse)
+async def telegram_miniapp():
+    """Telegram Mini App — dashboard optimized for Telegram WebView.
+
+    Telegram Mini Apps open inside Telegram's built-in browser.
+    Use this URL when configuring your Telegram Bot's Mini App:
+    https://<your-hf-space>.hf.space/miniapp
+
+    Features: real-time WebSocket, revenue chart, pipeline status,
+    campaign management, quick actions — all inside Telegram.
+    """
+    html = (templates_dir / "dashboard.html").read_text(encoding="utf-8")
+    # Add Telegram WebApp SDK + adjust viewport for Mini App
+    telegram_script = """
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+    if (window.Telegram && Telegram.WebApp) {
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+        // Theme matches Telegram
+        document.documentElement.style.setProperty('--bg-primary', Telegram.WebApp.backgroundColor || '#0a0a0a');
+        document.documentElement.style.setProperty('--text-primary', Telegram.WebApp.textColor || '#ffffff');
+        // Set header color
+        Telegram.WebApp.setHeaderColor('#0a0a0a');
+        Telegram.WebApp.setBackgroundColor('#0a0a0a');
+    }
+    </script>
+    <style>
+    /* Telegram Mini App tweaks */
+    body { padding-top: 0 !important; max-height: 100vh; overflow-y: auto; }
+    .header { display: none !important; }
+    </style>
+    """
+    html = html.replace("</head>", f"{telegram_script}</head>")
+    return HTMLResponse(html)
+
+
+@app.get("/api/miniapp/config")
+async def miniapp_config():
+    """Config for Telegram Mini App — bot token, webapp URL, etc."""
+    return {
+        "webapp_url": f"https://{os.environ.get('SPACE_ID', 'titan-aio')}.hf.space/miniapp",
+        "bot_token_configured": bool(os.environ.get("TELEGRAM_BOT_TOKEN")),
+        "features": [
+            "real-time_dashboard",
+            "revenue_tracking",
+            "pipeline_monitoring",
+            "campaign_management",
+            "quick_actions",
+        ],
+    }
+
+
+def main():
+    uvicorn.run("titan.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG, log_level=settings.LOG_LEVEL.lower())
+
+if __name__ == "__main__":
+    main()

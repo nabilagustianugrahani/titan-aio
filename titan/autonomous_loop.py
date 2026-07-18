@@ -1,0 +1,204 @@
+"""TITAN AIO — Autonomous Loop
+Berjalan terus sendiri: discover → evaluate → create → publish → learn.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import random
+from datetime import datetime
+
+
+class AutonomousLoop:
+    """Self-running autonomous campaign engine.
+
+    Loop:
+    1. DISCOVER → Cari produk trending dari berbagai sumber
+    2. SCORE    → Evaluasi komisi & profit potential
+    3. CREATE   → Generate campaign (hooks, script, gambar, video)
+    4. UPLOAD   → Upload ke platform sosial
+    5. LEARN    → Simpan hasil, optimize next run
+    """
+
+    def __init__(self, use_scraper: bool = False):
+        self.use_scraper = use_scraper
+        self.running = False
+        self.stats = {"campaigns_created": 0, "products_scored": 0, "errors": 0}
+
+    async def run_once(self, keyword: str = "", category: str = "umum") -> dict:
+        """Single autonomous cycle — discover → create → publish."""
+        print(f"\n{'═' * 50}")
+        print(f"🚀 AUTONOMOUS CYCLE — {datetime.now().strftime('%H:%M:%S')}")
+        print(f"{'═' * 50}")
+
+        result = {"keyword": keyword, "category": category, "steps": {}}
+
+        # ── 1. DISCOVER ──────────────────────────────────────────
+        print("\n1️⃣  DISCOVER — Searching products...")
+        from Services.agents.scraper import ScrapeAgent
+
+        scraper = ScrapeAgent(use_reach=False)
+        kw = keyword or random.choice(["power bank", "skincare", "hijab", "vitamin", "snack sehat", "tas wanita"])
+
+        products = await scraper.search_products(
+            keyword=kw,
+            platform="shopee",
+            max_results=5,
+        )
+        result["steps"]["discover"] = {"keyword": kw, "found": len(products)}
+        print(f"   Found {len(products)} products for '{kw}'")
+
+        if not products:
+            return {"error": "No products found", **result}
+
+        # ── 2. SCORE — Cari komisi tertinggi ──────────────────────
+        print("\n2️⃣  SCORE — Evaluating commission potential...")
+        from Services.agents.commission_hunter import CommissionHunterAgent
+
+        CommissionHunterAgent()
+        # Panggil langsung tanpa DB session
+        scored = []
+        for p in products:
+            price = p.get("price", 0) or 0
+            sales = p.get("sales", 0) or 0
+            rate_min, rate_max = 0.05, 0.15
+            if category == "kecantikan":
+                rate_min, rate_max = 0.15, 0.30
+            elif category == "kesehatan":
+                rate_min, rate_max = 0.10, 0.25
+            avg_rate = (rate_min + rate_max) / 2
+            com = price * avg_rate
+            monthly = com * max(sales // 30, 1)
+
+            scored.append({
+                **p,
+                "commission": round(com),
+                "monthly_potential": round(monthly),
+                "score": round(min(com / 50000 * 50 + min(sales / 5000 * 30, 30) + 20, 100), 1),
+            })
+
+        scored.sort(key=lambda x: x["score"], reverse=True)
+        best = scored[0]
+        result["steps"]["score"] = {"best": best.get("title", ""), "score": best["score"], "commission": best["commission"]}
+        print(f"   🏆 Best: {best.get('title', '')[:40]} — Komisi Rp{best['commission']:,}/item")
+
+        # ── 3. CREATE — Generate campaign ─────────────────────────
+        print("\n3️⃣  CREATE — Generating campaign...")
+        try:
+            from MCP.schemas import CreateAffiliatePackageInput
+            from MCP.tools.create_affiliate_package import create_affiliate_package
+
+            url = best.get("url", f"https://shopee.co.id/{best.get('title', 'product').replace(' ', '-')}")
+            package = await create_affiliate_package(
+                CreateAffiliatePackageInput(url=url, include_video=True, include_avatar=True),
+            )
+            result["steps"]["create"] = {
+                "campaign_id": package.campaign_id,
+                "hooks": len(package.hooks.hooks),
+                "scripts": len(package.scripts.scripts),
+                "has_video": bool(package.video),
+            }
+            print(f"   ✅ Campaign {package.campaign_id[:8]}... — {len(package.hooks.hooks)} hooks, {len(package.scripts.scripts)} scripts")
+        except Exception as e:
+            result["steps"]["create"] = {"error": str(e)}
+            print(f"   ❌ Campaign failed: {e}")
+            self.stats["errors"] += 1
+            return result
+
+        # ── 4. SYNC TO NOTION ─────────────────────────────────────
+        print("\n4️⃣  SYNC — Pushing to Notion dashboard...")
+        try:
+            from Services.notion.sync import NotionDashboard
+            db = NotionDashboard()
+            db.push_knowledge(
+                category="Products" if category != "Hooks" else "Hooks",
+                pattern=f"💰 Auto: {best.get('title', '')[:80]}",
+                confidence=best["score"] / 100,
+                advice=f"Komisi Rp{best['commission']:,}/item | Score: {best['score']}/100",
+                source_campaign=package.campaign_id,
+            )
+            print("   ✅ Synced to Notion Knowledge Base")
+        except Exception as e:
+            print(f"   ⚠️  Notion sync: {e}")
+
+        # ── 5. LOG ────────────────────────────────────────────────
+        self.stats["campaigns_created"] += 1
+        self.stats["products_scored"] += len(scored)
+
+        print(f"\n{'═' * 50}")
+        print("✅ CYCLE COMPLETE")
+        print(f"   Campaign: {package.campaign_id}")
+        print(f"   Product: {best.get('title', '')[:40]}...")
+        print(f"   Komisi: Rp{best['commission']:,}/item")
+        print(f"   Total cycles: {self.stats['campaigns_created']}")
+        print(f"{'═' * 50}")
+
+        result["status"] = "complete"
+        result["stats"] = self.stats
+        return result
+
+    async def run_continuous(self, interval_minutes: int = 60, max_cycles: int = 10):
+        """Run autonomous loop continuously.
+
+        Args:
+            interval_minutes: Wait time between cycles
+            max_cycles: Maximum cycles before stopping (0 = unlimited)
+
+        """
+        self.running = True
+        cycle = 0
+        categories = ["umum", "kecantikan", "kesehatan", "fashion", "elektronik", "makanan"]
+        keywords = ["power bank", "skincare", "hijab", "vitamin", "snack sehat", "tas wanita", "jam tangan", "handmade"]
+
+        print(f"\n{'═' * 60}")
+        print("🤖 TITAN AIO — AUTONOMOUS MODE ACTIVE")
+        print(f"   Interval: {interval_minutes} menit per cycle")
+        print(f"   Max cycles: {max_cycles if max_cycles > 0 else 'Unlimited'}")
+        print(f"{'═' * 60}")
+
+        while self.running and (max_cycles == 0 or cycle < max_cycles):
+            cycle += 1
+            print(f"\n{'─' * 40}")
+            print(f"📡 Cycle #{cycle} — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"{'─' * 40}")
+
+            # Pick random keyword + category for variety
+            kw = random.choice(keywords)
+            cat = random.choice(categories)
+
+            try:
+                await self.run_once(keyword=kw, category=cat)
+            except Exception as e:
+                print(f"❌ Cycle failed: {e}")
+                self.stats["errors"] += 1
+
+            if cycle < max_cycles or max_cycles == 0:
+                print(f"\n⏳ Waiting {interval_minutes} menit before next cycle...")
+                await asyncio.sleep(interval_minutes * 60)
+
+        self.running = False
+        print(f"\n{'═' * 60}")
+        print("🏁 AUTONOMOUS MODE COMPLETE")
+        print(f"   Total cycles: {cycle}")
+        print(f"   Campaigns created: {self.stats['campaigns_created']}")
+        print(f"   Errors: {self.stats['errors']}")
+        print(f"{'═' * 60}")
+        return self.stats
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="TITAN AIO — Autonomous Loop")
+    parser.add_argument("--mode", choices=["once", "continuous"], default="once")
+    parser.add_argument("--keyword", default="")
+    parser.add_argument("--category", default="umum")
+    parser.add_argument("--interval", type=int, default=60, help="Minutes between cycles")
+    parser.add_argument("--max-cycles", type=int, default=5)
+    args = parser.parse_args()
+
+    loop = AutonomousLoop()
+
+    if args.mode == "continuous":
+        asyncio.run(loop.run_continuous(interval_minutes=args.interval, max_cycles=args.max_cycles))
+    else:
+        asyncio.run(loop.run_once(keyword=args.keyword, category=args.category))

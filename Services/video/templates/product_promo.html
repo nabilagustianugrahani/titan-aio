@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: #09090b; width: 1080px; height: 1920px; overflow: hidden; }
+  .slide { position: absolute; width: 1080px; height: 1920px; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 80px; }
+  .bg-gradient { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .bg-1 { background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 30%, #16213e 70%, #0f3460 100%); }
+  .bg-2 { background: linear-gradient(135deg, #1a0f0f 0%, #2e1a1a 30%, #3e1616 70%, #600f0f 100%); }
+  .bg-3 { background: linear-gradient(135deg, #0f1a0f 0%, #1a2e1a 30%, #163e16 70%, #0f600f 100%); }
+  .bg-4 { background: linear-gradient(135deg, #1a1a0f 0%, #2e2e1a 30%, #3e3e16 70%, #60600f 100%); }
+  .bg-5 { background: linear-gradient(135deg, #0f0f2e 0%, #1a1a3e 30%, #16164e 70%, #0f0f60 100%); }
+  h1 { font-size: 88px; font-weight: 900; color: #fff; text-align: center; line-height: 1.2; margin-bottom: 40px; }
+  .price-tag { font-size: 72px; font-weight: 800; color: #f59e0b; margin-bottom: 30px; }
+  .subtitle { font-size: 40px; font-weight: 400; color: #a1a1aa; text-align: center; line-height: 1.5; max-width: 900px; }
+  .cta { font-size: 48px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #7c5ce7, #a78bfa); padding: 24px 64px; border-radius: 60px; margin-top: 60px; }
+  .badge { position: absolute; top: 80px; right: 80px; background: rgba(124, 92, 231, 0.3); border: 2px solid #7c5ce7; color: #a78bfa; font-size: 28px; font-weight: 700; padding: 16px 32px; border-radius: 40px; }
+  .stats { display: flex; gap: 60px; margin-top: 60px; }
+  .stat-item { text-align: center; }
+  .stat-num { font-size: 56px; font-weight: 800; color: #f59e0b; }
+  .stat-label { font-size: 24px; color: #a1a1aa; margin-top: 8px; }
+  .logo { position: absolute; bottom: 80px; left: 80px; font-size: 24px; color: #52525b; font-weight: 600; letter-spacing: 2px; }
+  .glow { position: absolute; width: 600px; height: 600px; border-radius: 50%; filter: blur(120px); opacity: 0.15; }
+  .g1 { top: -200px; right: -200px; background: #7c5ce7; }
+  .g2 { bottom: -200px; left: -200px; background: #f59e0b; }
+  .g3 { top: 50%; left: 50%; transform: translate(-50%, -50%); background: #a78bfa; width: 800px; height: 800px; }
+  .hook-highlight { font-size: 64px; font-weight: 800; color: #f59e0b; margin-bottom: 30px; }
+  .bullet-list { max-width: 900px; margin: 0 auto; }
+  .bullet-item { font-size: 40px; color: #e4e4e7; margin-bottom: 24px; padding-left: 40px; border-left: 6px solid #7c5ce7; }
+</style>
+</head>
+<body>
+<div class="slide" data-duration="5">
+  <div class="bg-gradient bg-1"></div>
+  <div class="glow g1"></div>
+  <div class="glow g3"></div>
+  <div class="badge">✨ PRODUK VIRAL</div>
+  <h1>{{ product_name }}</h1>
+  <div class="price-tag">💰 Rp {{ price }}</div>
+  <div class="subtitle">{{ tagline }}</div>
+  <div class="stats">
+    <div class="stat-item"><div class="stat-num">{{ rating }}</div><div class="stat-label">⭐ Rating</div></div>
+    <div class="stat-item"><div class="stat-num">{{ sales }}</div><div class="stat-label">Terjual</div></div>
+  </div>
+  <div class="logo">TITAN AIO • AFFILIATE</div>
+</div>
+
+<div class="slide" data-duration="4">
+  <div class="bg-gradient bg-2"></div>
+  <div class="glow g2"></div>
+  <div class="hook-highlight">{{ hook }}</div>
+  <div class="subtitle" style="margin-top: 40px;">{{ hook_description }}</div>
+  <div class="logo">TITAN AIO • AFFILIATE</div>
+</div>
+
+<div class="slide" data-duration="6">
+  <div class="bg-gradient bg-4"></div>
+  <div class="glow g1"></div>
+  <div class="badge">🎯 ALASAN KENAPA</div>
+  <h1>Harus Beli {{ product_name_short }}</h1>
+  <div class="bullet-list">
+    {% for reason in reasons %}
+    <div class="bullet-item">{{ reason }}</div>
+    {% endfor %}
+  </div>
+  <div class="logo">TITAN AIO • AFFILIATE</div>
+</div>
+
+<div class="slide" data-duration="5">
+  <div class="bg-gradient bg-5"></div>
+  <div class="glow g3"></div>
+  <div class="badge">💸 SPESIAL</div>
+  <h1>Hanya {{ final_price }}</h1>
+  <div class="price-tag" style="text-decoration: line-through; opacity: 0.5;">Rp {{ original_price }}</div>
+  <div class="subtitle">Harga promosi terbatas! Jangan sampai kehabisan 🏃</div>
+  <div class="cta">🛒 LINK DI BIO!</div>
+  <div class="logo">TITAN AIO • AFFILIATE</div>
+</div>
+</body>
+</html>

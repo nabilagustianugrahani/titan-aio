@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+dist/
+build/
+
+# Dev/test artifacts
+test.db
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# Secrets (mount at runtime via -v or --env-file)
+.env
+.env.*
+
+# Docs (not needed in container)
+AGENTS/
+Docs/
+*.md
+
+# IDE
+.vscode/
+.idea/
+
+# Data files
+data/
