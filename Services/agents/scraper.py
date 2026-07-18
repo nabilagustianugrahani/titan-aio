@@ -175,12 +175,12 @@ class ScrapeAgent(BaseAgent):
             params = {
                 "api_key": self._scrapingbee_key,
                 "url": url,
-                "render_js": "false",
+                "render_js": "true",
                 "premium_proxy": "true",
                 "country_code": "id",
-                "wait": "3000",
+                "wait": "5000",
             }
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=45) as client:
                 resp = await client.get(self.SCRAPINGBEE_BASE, params=params)
                 if resp.status_code != 200:
                     return []
@@ -198,12 +198,12 @@ class ScrapeAgent(BaseAgent):
             params = {
                 "api_key": self._scrapingbee_key,
                 "url": url,
-                "render_js": "false",
+                "render_js": "true",
                 "premium_proxy": "true",
                 "country_code": "id",
-                "wait": "3000",
+                "wait": "5000",
             }
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=45) as client:
                 resp = await client.get(self.SCRAPINGBEE_BASE, params=params)
                 if resp.status_code != 200:
                     return {"title": "Unknown"}
@@ -452,22 +452,34 @@ class ScrapeAgent(BaseAgent):
     # ── HTML parsing helpers (used by ScrapingBee path) ───────────
 
     def _parse_products_from_html(self, html: str, platform: str, keyword: str, limit: int) -> list[dict]:
-        """Parse product data from HTML response."""
+        """Parse product data from HTML response.
+
+        Strategy: collect product names (from alt text / JSON) and prices
+        in DOM order, then pair them. This works for both Shopee & Tokopedia
+        SPA pages because products are rendered sequentially.
+        """
         products: list[dict] = []
 
-        # Pattern 1: JSON data in script tags
-        json_matches = re.findall(r"window\.__INITIAL_STATE__\s*=\s*({.*?});", html, re.DOTALL)
+        # Pattern 1: JSON data embedded in script tags (__INITIAL_STATE__, etc.)
+        json_matches = re.findall(r"window\.__\w+__\s*=\s*({.*?});", html, re.DOTALL)
         if json_matches:
             try:
                 data = json.loads(json_matches[0])
-                items = data.get("items", data.get("products", []))
+                # Flatten search across common keys
+                items = []
+                for key in ("items", "products", "item", "searchResult", "data"):
+                    val = data.get(key, {})
+                    if isinstance(val, list):
+                        items.extend(val)
+                    elif isinstance(val, dict):
+                        items.extend(val.get("items", val.get("products", [])))
                 for item in items[:limit]:
                     if isinstance(item, dict):
                         products.append({
                             "title": item.get("name", item.get("title", keyword.title())),
-                            "price": item.get("price", 0),
+                            "price": item.get("price", item.get("price_min", 0)),
                             "rating": item.get("rating", item.get("score")),
-                            "sales": item.get("sales", item.get("sold", 0)),
+                            "sales": item.get("sales", item.get("sold", item.get("sold_count", 0))),
                             "url": item.get("url", ""),
                             "platform": platform,
                             "source": "scrapingbee",
@@ -475,31 +487,57 @@ class ScrapeAgent(BaseAgent):
             except Exception:
                 pass
 
-        # Pattern 2: Extract from HTML attributes
+        # Pattern 2: Extract names from <img alt="..." /> (SPA-rendered products)
         if not products:
-            product_patterns = [
-                r'data-sqe="item"[^>]*>(.*?)</div>',
-                r'class="[^"]*product[^"]*"[^>]*>(.*?)</div>',
-                r'data-testid="divProductWrapper"[^>]*>(.*?)</div>',
+            # Collect real product names from alt texts (skip generic ones)
+            alts = re.findall(r'alt="([^"]+)"', html)
+            names = [
+                a for a in alts
+                if len(a) > 8
+                and not a.lower().startswith(("shopee", "tokopedia", "product-", "loading", "image"))
             ]
-            for pattern in product_patterns:
-                matches = re.findall(pattern, html, re.DOTALL)
-                if matches:
-                    for match in matches[:limit]:
-                        title_match = re.search(r'class="[^"]*name[^"]*"[^>]*>([^<]+)', match)
-                        title = title_match.group(1).strip() if title_match else keyword.title()
-                        price_match = re.search(r"(?:Rp|IDR)\s*([\d.,]+)", match)
-                        price = self._parse_price(price_match.group(0)) if price_match else 0
-                        if title and price > 0:
-                            products.append({
-                                "title": title,
-                                "price": price,
-                                "rating": None,
-                                "sales": 0,
-                                "url": "",
-                                "platform": platform,
-                                "source": "scrapingbee",
-                            })
+
+            # Collect all Rp prices in DOM order
+            prices = [
+                self._parse_price(m)
+                for m in re.findall(r"Rp\s*[\d.]+", html)
+            ]
+
+            # Pair: first N names with first N prices
+            for i, name in enumerate(names[:limit]):
+                price = prices[i] if i < len(prices) else 0
+                if name and price > 0:
+                    products.append({
+                        "title": name.strip(),
+                        "price": price,
+                        "rating": None,
+                        "sales": 0,
+                        "url": "",
+                        "platform": platform,
+                        "source": "scrapingbee",
+                    })
+
+        # Pattern 3: JSON-LD structured data
+        if not products:
+            jsonld = re.findall(
+                r'<script[^>]*type="application/ld\+json"[^>]*>(.*?)</script>',
+                html, re.DOTALL,
+            )
+            for j in jsonld:
+                try:
+                    data = json.loads(j)
+                    if isinstance(data, dict) and data.get("name"):
+                        products.append({
+                            "title": data["name"],
+                            "price": self._parse_price(str(data.get("offers", {}).get("price", 0))),
+                            "rating": data.get("aggregateRating", {}).get("ratingValue"),
+                            "sales": 0,
+                            "url": data.get("url", ""),
+                            "platform": platform,
+                            "source": "scrapingbee",
+                        })
+                except Exception:
+                    pass
 
         return products[:limit]
 
